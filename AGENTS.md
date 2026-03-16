@@ -3,19 +3,121 @@
 ## Project Overview
 This is a Python-based Network Intrusion Detection System (AI-NIDS) using machine learning (Random Forest) and deep learning (Autoencoder) on the CIC-IDS2017 dataset.
 
-## Project Structure
+## Project Structure (Updated March 2026)
 ```
 Project/
 ├── src/
-│   ├── features/extractor.py    # Feature extraction & preprocessing
-│   └── models/
-│       ├── autoencoder.py       # Autoencoder anomaly detector
-│       └── train_rf.py          # Random Forest classifier
-├── models/                      # Trained model artifacts
-├── data/                        # Dataset files
-├── venv/                        # Python virtual environment
-└── AGENTS.md                    # This file
+│   ├── capture/
+│   │   ├── __init__.py
+│   │   └── sniffer.py          # Live packet sniffer with 5-tuple flow assembly
+│   ├── features/
+│   │   ├── __init__.py
+│   │   └── extractor.py        # Feature extraction (updated with extract_live_features)
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── autoencoder.py       # Autoencoder anomaly detector
+│   │   ├── train_rf.py         # Random Forest classifier
+│   │   └── hybrid_predictor.py # Hybrid RF+AE fusion (NEW)
+│   └── dashboard/
+│       ├── __init__.py
+│       └── app.py              # Streamlit dashboard (NEW)
+├── models/                     # Trained model artifacts
+│   ├── rf_model.pkl           # Random Forest (99.76% accuracy)
+│   ├── rf_metadata.pkl        # Class labels
+│   ├── autoencoder.keras       # Trained autoencoder
+│   ├── autoencoder_threshold.npy
+│   ├── scaler.pkl             # StandardScaler
+│   └── rf_feature_importance.png
+├── data/                       # Dataset files (CIC-IDS2017)
+├── logs/                       # Alert database
+├── tests/
+│   └── test_hybrid_predictor.py
+├── alert_manager.py            # Alert storage & management (NEW - in root)
+├── dashboard/                  # Legacy dashboard location (use src/dashboard)
+├── Dockerfile                 # Docker container (NEW)
+├── docker-compose.yml         # Docker Compose (NEW)
+├── requirements.txt           # Python dependencies (NEW)
+├── .gitignore
+├── AGENTS.md
+├── AI-NIDS-PROJECT-PLAN.md
+└── progress.md
 ```
+
+## What Was Built (March 2026 Session)
+
+### 1. HybridPredictor (`src/models/hybrid_predictor.py`)
+- Fuses Random Forest + Autoencoder predictions
+- Decision fusion logic:
+  - RF says Attack → Attack verdict
+  - RF says Benign + AE anomaly → Suspicious (possible zero-day)
+  - RF says Benign + AE normal → Benign
+- Uses frozen dataclasses for immutable results
+- Supports both numpy array and dict input
+
+### 2. PacketSniffer (`src/capture/sniffer.py`)
+- Live packet capture using Scapy
+- 5-tuple flow assembly (src_ip, dst_ip, src_port, dst_port, protocol)
+- Configurable flow timeout (default 60s)
+- Thread-safe with callbacks for completed flows
+
+### 3. Live Feature Extraction (`src/features/extractor.py`)
+- Added `extract_live_features()` function
+- Converts flow dict to 52 CIC-IDS2017-style features
+- Computes packet statistics, IAT, flags, etc.
+
+### 4. Streamlit Dashboard (`src/dashboard/app.py`)
+- Live metrics: Total Alerts, Attacks, Suspicious, Benign
+- Attack distribution donut chart
+- Attack rate gauge
+- Alert timeline (line chart)
+- Top attackers bar chart
+- Recent alerts table (color-coded)
+- IP blocking functionality
+- CSV export
+- Auto-refresh (configurable 1-10s)
+- Demo mode with generated data
+
+### 5. AlertManager (`alert_manager.py`)
+- SQLite database for persistent storage
+- In-memory deque for fast dashboard reads (last 500 alerts)
+- Thread-safe with locking
+- Methods:
+  - `add_alert()` - Store new alert
+  - `get_recent_alerts()` - Get last N alerts
+  - `get_top_attackers()` - Top N attacking IPs
+  - `get_attack_distribution()` - Attack type counts
+  - `block_ip()` - Block malicious IP
+  - `get_blocked_ips()` - List blocked IPs
+  - `export_csv()` - Export to CSV
+
+### 6. Docker Setup
+- `Dockerfile` - Python 3.11-slim with all dependencies
+- `docker-compose.yml` - Container with NET_ADMIN, NET_RAW capabilities
+
+### 7. Tests (`tests/test_hybrid_predictor.py`)
+- 10 tests for HybridPredictor
+- Tests for fusion logic, prediction, error handling
+
+## Model Performance
+
+### Random Forest
+- **Accuracy: 99.76%** on 7 classes
+- Classes: Bots, Brute Force, DDoS, DoS, Normal Traffic, Port Scanning, Web Attacks
+- Threshold tuning for Bots (0.81)
+
+### Autoencoder
+- Trained on benign traffic only
+- Threshold: 0.5 (adjusted from 0.116 for better separation)
+- Used for zero-day anomaly detection
+
+### Hybrid Predictor
+- RF-primary fusion (trusts RF, uses AE as backup for suspicious detection)
+- Result: ~99.76% attack detection with anomaly backup
+
+## GitHub Repository
+- **URL**: https://github.com/SudoToji/AI-NIDS
+- **Type**: Private repository
+- **Contains**: All source code, trained models, Docker configs
 
 ## Build/Lint/Test Commands
 
@@ -34,27 +136,38 @@ python -m src.models.train_rf
 python -m src.models.autoencoder
 ```
 
-### Testing
-This project uses **pytest** for testing. Tests are located in a `tests/` directory (create if not exists).
+### Running the Dashboard
+```bash
+# Activate venv first
+streamlit run src/dashboard/app.py
+# Open http://localhost:8501
+```
 
+### Testing
 ```bash
 # Run all tests
 pytest
 
 # Run a single test file
-pytest tests/test_extractor.py
+pytest tests/test_hybrid_predictor.py
 
 # Run a single test function
-pytest tests/test_extractor.py::test_load_dataset
-
-# Run tests matching a pattern
-pytest -k "test_load"
+pytest tests/test_hybrid_predictor.py::TestHybridPredictor::test_compute_fusion_both_attack
 
 # Run with verbose output
 pytest -v
 
 # Run with coverage
 pytest --cov=src --cov-report=term-missing
+```
+
+### Docker
+```bash
+# Build and run
+docker-compose up --build
+
+# Or just run
+docker-compose up
 ```
 
 ### Linting & Type Checking
@@ -64,9 +177,6 @@ ruff check src/
 
 # Run ruff with auto-fix
 ruff check src/ --fix
-
-# Run mypy type checker
-mypy src/
 
 # Format code with ruff
 ruff format src/
@@ -222,3 +332,20 @@ def test_load_dataset_raises_on_missing_file():
 - Use chunked reading for large datasets
 - Use `n_jobs=-1` for parallelizable scikit-learn operations
 - Cache computed values where appropriate
+
+## Future Work (From AI-NIDS-PROJECT-PLAN.md)
+
+### Phase 3: Backend & Alert System
+- Integrate HybridPredictor with AlertManager
+- Connect PacketSniffer → HybridPredictor → AlertManager pipeline
+- Add real-time alert notifications
+
+### Phase 4: Dashboard & Simulator
+- Enhance Streamlit dashboard
+- Add attack simulator for testing
+- Add GeoIP for attack visualization
+
+### TriCoAlign-0.5B Integration (Optional)
+- Could add LLM-based explanations for attacks
+- Not needed for core detection - RF already at 99.76%
+- Could be used as explanation layer
