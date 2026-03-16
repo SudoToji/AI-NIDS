@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  nids:
+    build: .
+    container_name: ai-nids
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    environment:
+      - SNIFF_IFACE=eth0
+      - FLOW_TIMEOUT=60
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8501:8501"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
