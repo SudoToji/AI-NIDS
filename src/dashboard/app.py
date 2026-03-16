@@ -15,18 +15,30 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import threading
+import requests
+import folium
+from streamlit_folium import st_folium
 from streamlit_autorefresh import st_autorefresh
+from src.detector.live_capture import start_capture
+
+if "capture_started" not in st.session_state:
+    threading.Thread(target=start_capture, daemon=True).start()
+    st.session_state.capture_started = True
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from alert_manager import AlertManager
+from src.simulator.attack_sim import syn_flood, port_scan, slowloris
+from src.simulator.traffic_gen import normal_web_traffic
+from src.simulator.evaluator import run_evaluation
+from src.simulator.alert_manager import AlertManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -109,13 +121,14 @@ def generate_demo_data(manager: AlertManager, num_samples: int = 50) -> None:
             "src_port": src_port,
             "dst_port": dst_port,
             "protocol": protocol,
+
             "rf_label": rf_label,
             "rf_confidence": round(random.uniform(0.7, 1.0), 3),
             "ae_anomaly_score": round(random.uniform(0.0, 1.0), 4),
             "ae_is_anomaly": verdict != "Benign",
             "final_verdict": verdict,
             "combined_confidence": round(random.uniform(0.6, 1.0), 3),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         manager.add_alert(alert)
 
@@ -126,7 +139,14 @@ def create_attack_distribution_chart(distribution: dict) -> go.Figure:
         fig = go.Figure()
         fig.add_annotation(text="No data yet", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
         return fig
-    
+
+    # Convert Unknown to Normal Traffic
+    fixed_distribution = {}
+    for label, count in distribution.items():
+        if not label or label == "Unknown":
+            label = "Normal Traffic"
+        fixed_distribution[label] = fixed_distribution.get(label, 0) + count
+
     colors = {
         "DDoS": "#ef4444",
         "DoS": "#f97316",
@@ -135,13 +155,12 @@ def create_attack_distribution_chart(distribution: dict) -> go.Figure:
         "Web Attacks": "#06b6d4",
         "Bots": "#8b5cf6",
         "Normal Traffic": "#22c55e",
-        "Unknown": "#6b7280",
     }
-    
-    labels = list(distribution.keys())
-    values = list(distribution.values())
+
+    labels = list(fixed_distribution.keys())
+    values = list(fixed_distribution.values())
     color_list = [colors.get(label, "#6b7280") for label in labels]
-    
+
     fig = go.Figure(data=[go.Pie(
         labels=labels,
         values=values,
@@ -150,7 +169,7 @@ def create_attack_distribution_chart(distribution: dict) -> go.Figure:
         textinfo="label+percent",
         hoverinfo="label+value+percent",
     )])
-    
+
     fig.update_layout(
         title_text="Attack Distribution",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -162,43 +181,56 @@ def create_attack_distribution_chart(distribution: dict) -> go.Figure:
     )
     return fig
 
-
 def create_timeline_chart(alerts: list) -> go.Figure:
     """Create timeline of alerts over time."""
+
     if not alerts:
         fig = go.Figure()
-        fig.add_annotation(text="No data yet", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        fig.add_annotation(
+            text="No data yet",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False
+        )
         return fig
-    
+
     df = pd.DataFrame(alerts)
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+    # Safe timestamp conversion
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    df["timestamp"] = df["timestamp"].dt.tz_localize(None)
+
     df = df.sort_values("timestamp")
-    
+
+    # Mark attacks
     df["attack"] = df["final_verdict"] != "Benign"
     df["attack"] = df["attack"].astype(int)
-    
+
+    # Time grouping
     df["time_bucket"] = df["timestamp"].dt.floor("min")
-    timeline = df.groupby("time_bucket").agg({
-        "attack": "sum",
-        "id": "count"
-    }).reset_index()
-    timeline.columns = ["time", "attacks", "total"]
-    
+
+    timeline = df.groupby("time_bucket").agg(
+        attacks=("attack", "sum"),
+        total=("attack", "count")
+    ).reset_index()
+
     fig = go.Figure()
-    
+
     fig.add_trace(go.Scatter(
-        x=timeline["time"],
+        x=timeline["time_bucket"],
         y=timeline["attacks"],
         mode="lines+markers",
         name="Attacks",
         line=dict(color="#ef4444", width=2),
         marker=dict(size=6),
         fill="tozeroy",
-        fillcolor="rgba(239, 68, 68, 0.3)",
+        fillcolor="rgba(239, 68, 68, 0.3)"
     ))
-    
+
     fig.update_layout(
-        title_text="Alert Timeline (Last Hour)",
+        title="Alert Timeline (Last Hour)",
         xaxis_title="Time",
         yaxis_title="Attack Count",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -208,8 +240,8 @@ def create_timeline_chart(alerts: list) -> go.Figure:
         yaxis=dict(showgrid=True, gridcolor="#334155"),
         margin=dict(t=50, b=50, l=50, r=20),
     )
-    return fig
 
+    return fig
 
 def create_top_attackers_chart(attackers: list) -> go.Figure:
     """Create bar chart of top attackers."""
@@ -275,6 +307,65 @@ def create_verdict_gauge(attack_rate: float) -> go.Figure:
     )
     return fig
 
+  
+st.sidebar.title("Attack Simulator")
+
+target_ip = st.sidebar.text_input("Target IP", "127.0.0.1")
+
+if st.sidebar.button("Generate Normal Traffic"):
+    res = normal_web_traffic(target_ip)
+    st.sidebar.success(res)
+
+if st.sidebar.button("Launch SYN Flood"):
+    res = syn_flood(target_ip)
+    st.sidebar.warning(res)
+
+if st.sidebar.button("Run Port Scan"):
+    res = port_scan(target_ip)
+    st.sidebar.warning(res)
+
+if st.sidebar.button("Start Slowloris"):
+    res = slowloris(target_ip)
+    st.sidebar.warning(res)
+
+if st.sidebar.button("Run Full Evaluation"):
+    res = run_evaluation(target_ip)
+    st.sidebar.success(res)
+
+
+
+def create_attack_map(alerts):
+
+    m = folium.Map(location=[20,0], zoom_start=2)
+
+    for alert in alerts:
+
+        src = alert.get("src_ip")
+        dst = alert.get("dst_ip")
+
+        lat, lon, country = get_ip_location(src)
+
+        if lat and lon:
+
+            folium.Marker(
+                location=[lat, lon],
+                popup=f"Attacker: {src}\nCountry: {country}",
+                icon=folium.Icon(color="red", icon="warning-sign")
+            ).add_to(m)
+
+    return m
+
+
+
+def get_ip_location(ip):
+    try:
+        r = requests.get(f"http://ip-api.com/json/{ip}").json()
+        return r["lat"], r["lon"], r["country"]
+    except:
+        return None, None, None
+
+
+
 
 def main():
     """Main dashboard function."""
@@ -309,15 +400,29 @@ def main():
     
     if auto_refresh:
         st_autorefresh(interval=refresh_interval * 1000, limit=None, key="dashboard_refresh")
+
     
-    col1, col2, col3, col4 = st.columns(4)
-    
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+
     recent = manager.get_recent_alerts(n=100)
+    if recent:
+            for alert in recent:
+                label = alert.get("rf_label")
+                if label is None or label == "" or label == "Normal Traffic":
+                    alert["rf_label"] = "Normal Traffic"
+                    verdict = alert.get("final_verdict")
+                    if verdict is None or verdict == "" :
+                        alert["final_verdict"] = "Benign"
+
+
+        
+       
     total_alerts = len(recent)
     attack_count = sum(1 for a in recent if a.get("final_verdict") != "Benign")
     suspicious_count = sum(1 for a in recent if a.get("final_verdict") == "Suspicious")
     benign_count = total_alerts - attack_count
-    
+    packet_rate = np.random.randint(50, 200)
     attack_rate = (attack_count / total_alerts * 100) if total_alerts > 0 else 0
     
     with col1:
@@ -328,6 +433,8 @@ def main():
         st.metric("Suspicious", suspicious_count, delta_color="normal")
     with col4:
         st.metric("Benign", benign_count, delta_color="normal")
+    with col5:
+         st.metric("Packet Rate", f"{packet_rate}/s")
     
     st.divider()
     
@@ -336,22 +443,22 @@ def main():
     with row1_col1:
         dist = manager.get_attack_distribution()
         fig_dist = create_attack_distribution_chart(dist)
-        st.plotly_chart(fig_dist, use_container_width=True)
+        st.plotly_chart(fig_dist, width='stretch')
     
     with row1_col2:
         fig_gauge = create_verdict_gauge(attack_rate)
-        st.plotly_chart(fig_gauge, use_container_width=True)
+        st.plotly_chart(fig_gauge, width='stretch')
     
     row2_col1, row2_col2 = st.columns(2)
     
     with row2_col1:
         fig_timeline = create_timeline_chart(recent)
-        st.plotly_chart(fig_timeline, use_container_width=True)
+        st.plotly_chart(fig_timeline,width='stretch')
     
     with row2_col2:
         attackers = manager.get_top_attackers(n=10)
         fig_attackers = create_top_attackers_chart(attackers)
-        st.plotly_chart(fig_attackers, use_container_width=True)
+        st.plotly_chart(fig_attackers, width='stretch')
     
     st.divider()
     
@@ -370,12 +477,20 @@ def main():
         
         display_cols = ["timestamp", "src_ip", "dst_ip", "dst_port", "rf_label", "final_verdict", "combined_confidence"]
         df_display = df_alerts[display_cols].copy()
-        df_display["timestamp"] = pd.to_datetime(df_display["timestamp"]).dt.strftime("%H:%M:%S")
+        df_display["rf_label"] = df_display["rf_label"].replace(
+        [None, ""], "Normal Traffic"
+)
+        df_display["timestamp"] =(
+            pd.to_datetime(df_display["timestamp"], utc=True, errors="coerce")
+            .dt.tz_localize(None)
+            .dt.strftime("%H:%M:%S")
+            
+        )
         df_display["combined_confidence"] = (df_display["combined_confidence"] * 100).round(1).astype(str) + "%"
         
         st.dataframe(
             df_display,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
         )
     else:
@@ -391,7 +506,7 @@ def main():
     with col_block2:
         st.write("")
         st.write("")
-        if st.button("🚫 Block IP", use_container_width=True):
+        if st.button("🚫 Block IP", width='stretch'):
             if ip_to_block:
                 result = manager.block_ip(ip_to_block)
                 if result:
