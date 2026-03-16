@@ -30,7 +30,7 @@ DEFAULT_FLOW_TIMEOUT = 60
 DEFAULT_QUEUE_SIZE = 1000
 
 
-@dataclass(flow=False)
+@dataclass
 class PacketInfo:
     """Container for parsed packet information."""
 
@@ -283,7 +283,7 @@ class PacketSniffer:
             from scapy.all import sniff
             
             sniff(
-                iface=self._interface,
+                iface=None,
                 filter=self._bpf_filter,
                 prn=self._packet_queue.append,
                 store=False,
