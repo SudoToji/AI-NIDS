@@ -413,26 +413,28 @@ def extract_live_features(flow: Dict) -> pd.DataFrame:
     
     timestamps = np.array([p["timestamp"] for p in packets])
     sizes = np.array([p["size"] for p in packets])
-    directions = np.array([1 if p["direction"] == "fwd" else 0 for p in packets])
+    # Direction: 1 = forward (src -> dst), 0 = backward (dst -> src)
+    directions = np.array([1 if p.get("direction", "fwd") == "fwd" else 0 for p in packets])
     flags = np.array([p.get("flags", 0) for p in packets])
     
     start_time = timestamps[0]
     end_time = timestamps[-1]
     duration = max(end_time - start_time, 1e-6)
     
-    fwd_packets = packets if all(p["direction"] == "fwd" for p in packets) else []
-    bwd_packets = packets if all(p["direction"] == "bwd" for p in packets) else []
+    # Separate forward and backward packets based on direction field
+    fwd_indices = np.where(directions == 1)[0]
+    bwd_indices = np.where(directions == 0)[0]
     
-    fwd_sizes = np.array([p["size"] for p in packets if p["direction"] == "fwd"])
-    bwd_sizes = np.array([p["size"] for p in packets if p["direction"] == "bwd"])
+    fwd_sizes = sizes[fwd_indices] if len(fwd_indices) > 0 else np.array([])
+    bwd_sizes = sizes[bwd_indices] if len(bwd_indices) > 0 else np.array([])
     
-    fwd_times = np.array([p["timestamp"] - start_time for p in packets if p["direction"] == "fwd"])
-    bwd_times = np.array([p["timestamp"] - start_time for p in packets if p["direction"] == "bwd"])
+    fwd_times = timestamps[fwd_indices] - start_time if len(fwd_indices) > 0 else np.array([])
+    bwd_times = timestamps[bwd_indices] - start_time if len(bwd_indices) > 0 else np.array([])
     
     features = {
         "Destination Port": flow.get("dst_port", 0),
-        "Flow Duration": duration * 1000,
-        "Total Fwd Packets": len(fwd_packets) if fwd_packets else len([p for p in packets if p["direction"] == "fwd"]),
+        "Flow Duration": duration * 1000,  # Convert to milliseconds
+        "Total Fwd Packets": int(len(fwd_indices)),
         "Total Length of Fwd Packets": float(np.sum(fwd_sizes)) if len(fwd_sizes) > 0 else 0.0,
         "Fwd Packet Length Max": float(np.max(fwd_sizes)) if len(fwd_sizes) > 0 else 0.0,
         "Fwd Packet Length Min": float(np.min(fwd_sizes)) if len(fwd_sizes) > 0 else 0.0,
@@ -458,10 +460,10 @@ def extract_live_features(flow: Dict) -> pd.DataFrame:
         "Bwd IAT Std": float(np.std(bwd_times)) if len(bwd_times) > 1 else 0.0,
         "Bwd IAT Max": float(np.max(bwd_times)) if len(bwd_times) > 0 else 0.0,
         "Bwd IAT Min": float(np.min(bwd_times)) if len(bwd_times) > 0 else 0.0,
-        "Fwd Header Length": sum(40 for p in packets if p["direction"] == "fwd"),
-        "Bwd Header Length": sum(40 for p in packets if p["direction"] == "bwd"),
-        "Fwd Packets/s": float(len([p for p in packets if p["direction"] == "fwd"])) / duration if duration > 0 else 0.0,
-        "Bwd Packets/s": float(len([p for p in packets if p["direction"] == "bwd"])) / duration if duration > 0 else 0.0,
+        "Fwd Header Length": int(len(fwd_indices)) * 40,  # 20 bytes TCP header per packet
+        "Bwd Header Length": int(len(bwd_indices)) * 40,
+        "Fwd Packets/s": float(len(fwd_indices)) / duration if duration > 0 else 0.0,
+        "Bwd Packets/s": float(len(bwd_indices)) / duration if duration > 0 else 0.0,
         "Min Packet Length": float(np.min(sizes)),
         "Max Packet Length": float(np.max(sizes)),
         "Packet Length Mean": float(np.mean(sizes)),
@@ -474,7 +476,7 @@ def extract_live_features(flow: Dict) -> pd.DataFrame:
         "Subflow Fwd Bytes": float(np.sum(fwd_sizes)),
         "Init_Win_bytes_forward": 64240,
         "Init_Win_bytes_backward": 65535,
-        "act_data_pkt_fwd": len(fwd_packets) if fwd_packets else len([p for p in packets if p["direction"] == "fwd"]),
+        "act_data_pkt_fwd": int(len(fwd_indices)),
         "min_seg_size_forward": 40,
         "Active Mean": 0.0,
         "Active Max": 0.0,

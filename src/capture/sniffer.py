@@ -104,8 +104,13 @@ def _get_flow_key(packet: PacketInfo) -> tuple:
     return (src, dst, proto_tuple)
 
 
-def _parse_packet_to_info(packet: Packet) -> Optional[PacketInfo]:
-    """Parse raw Scapy packet into PacketInfo."""
+def _parse_packet_to_info(packet: Packet, flow_direction: str = "fwd") -> Optional[PacketInfo]:
+    """Parse raw Scapy packet into PacketInfo.
+    
+    Args:
+        packet: Scapy packet
+        flow_direction: Direction relative to the flow initiator ("fwd" or "bwd")
+    """
     if IP not in packet:
         return None
     
@@ -125,7 +130,7 @@ def _parse_packet_to_info(packet: Packet) -> Optional[PacketInfo]:
         tcp_layer = packet[TCP]
         src_port = tcp_layer.sport
         dst_port = tcp_layer.dport
-        flags = tcp_layer.flags
+        flags = int(tcp_layer.flags)
     elif protocol == 17 and UDP in packet:
         udp_layer = packet[UDP]
         src_port = udp_layer.sport
@@ -134,8 +139,6 @@ def _parse_packet_to_info(packet: Packet) -> Optional[PacketInfo]:
         icmp_layer = packet[ICMP]
         src_port = icmp_layer.type
         dst_port = icmp_layer.code
-    
-    direction = "fwd"
     
     return PacketInfo(
         timestamp=timestamp,
@@ -146,7 +149,7 @@ def _parse_packet_to_info(packet: Packet) -> Optional[PacketInfo]:
         dst_port=dst_port,
         protocol=protocol,
         flags=flags,
-        direction=direction,
+        direction=flow_direction,
     )
 
 

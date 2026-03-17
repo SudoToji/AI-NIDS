@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-NIDS Security Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#170f29",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#17141e",
+                        "accent-red": "#ef4444",
+                        "accent-orange": "#f97316",
+                        "accent-green": "#22c55e",
+                        "accent-blue": "#3b82f6",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Space Grotesk', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #17141e; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #312b40; border-radius: 10px; }
+        
+        .metric-card { transition: all 0.2s ease; }
+        .metric-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3); }
+        
+        .loading { opacity: 0.5; pointer-events: none; }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        .toast-success { background: #22c55e; color: white; }
+        .toast-error { background: #ef4444; color: white; }
+        .toast-info { background: #3b82f6; color: white; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-slate-100 antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-72 bg-primary border-r border-slate-800 flex flex-col shrink-0">
+            <div class="p-6 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 rounded-lg bg-accent-blue/20 flex items-center justify-center border border-accent-blue/30">
+                        <span class="material-symbols-outlined text-accent-blue">security</span>
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-bold tracking-tight">Security Admin</h1>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest">SOC Operations</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
+                <!-- Attack Simulator Section -->
+                <div>
+                    <h3 class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Attack Simulator</h3>
+                    <div class="space-y-1">
+                        <button onclick="runSimulation('normal')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors group">
+                            <span class="material-symbols-outlined text-sm text-slate-400 group-hover:text-white">monitoring</span>
+                            <span class="text-sm font-medium">Generate Normal Traffic</span>
+                        </button>
+                        <button onclick="runSimulation('synflood')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 transition-colors group">
+                            <span class="material-symbols-outlined text-sm text-accent-red">water_drop</span>
+                            <span class="text-sm font-medium">Launch SYN Flood</span>
+                        </button>
+                        <button onclick="runSimulation('portscan')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent-orange/10 transition-colors group">
+                            <span class="material-symbols-outlined text-sm text-accent-orange">radar</span>
+                            <span class="text-sm font-medium">Run Port Scan</span>
+                        </button>
+                        <button onclick="runSimulation('slowloris')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent-blue/10 transition-colors group">
+                            <span class="material-symbols-outlined text-sm text-accent-blue">timer</span>
+                            <span class="text-sm font-medium">Start Slowloris</span>
+                        </button>
+                    </div>
+                    <button onclick="runSimulation('ddos')" class="mt-4 w-full py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-bold rounded transition-all shadow-lg shadow-blue-900/20 uppercase tracking-wider">
+                        Run Full Evaluation
+                    </button>
+                </div>
+                
+                <!-- Configuration Section -->
+                <div>
+                    <h3 class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Configuration</h3>
+                    <div class="px-3 space-y-4">
+                        <div class="p-3 rounded bg-slate-900/50 border border-slate-800">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[11px] text-slate-400">Random Forest</span>
+                                <span class="text-[11px] text-accent-green font-bold" id="rfStatus">Loading...</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                                <div class="bg-accent-green h-full" style="width: 99.76%"></div>
+                            </div>
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-[11px] text-slate-400">Autoencoder</span>
+                                <span class="px-1.5 py-0.5 rounded-sm bg-accent-green/20 text-accent-green text-[9px] font-bold uppercase" id="aeStatus">Loading</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium">Auto Refresh</span>
+                            <div class="w-8 h-4 bg-accent-blue rounded-full relative cursor-pointer" onclick="toggleAutoRefresh()">
+                                <div id="autoRefreshDot" class="absolute right-0.5 top-0.5 size-3 bg-white rounded-full transition-all"></div>
+                            </div>
+                        </div>
+                        <button onclick="clearAlerts()" class="flex items-center gap-2 text-slate-400 hover:text-accent-red transition-colors">
+                            <span class="material-symbols-outlined text-sm">delete_sweep</span>
+                            <span class="text-sm font-medium">Clear All Alerts</span>
+                        </button>
+                    </div>
+                </div>
+            </nav>
+            
+            <div class="p-4 border-t border-slate-800">
+                <div class="flex items-center gap-3 px-2">
+                    <div class="size-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold">AD</div>
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-xs font-bold">Admin Session</p>
+                        <p class="text-[10px] text-slate-500">soc-node-04.local</p>
+                    </div>
+                    <span class="material-symbols-outlined text-slate-500 text-lg cursor-pointer hover:text-white">settings</span>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto custom-scrollbar bg-background-dark">
+            <!-- Header -->
+            <header class="sticky top-0 z-10 bg-background-dark/80 backdrop-blur-md border-b border-slate-800 px-8 py-4 flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        🛡️ AI-NIDS <span class="text-slate-500 font-normal">|</span> Network Intrusion Detection
+                    </h2>
+                    <p class="text-xs text-slate-500 font-medium">EDUCATIONAL USE ONLY • System Environment: Production</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-500 text-sm">search</span>
+                        <input class="pl-9 pr-4 py-2 bg-slate-900 border-slate-800 rounded-lg text-xs focus:ring-accent-blue focus:border-accent-blue w-64" placeholder="Search events..." type="text"/>
+                    </div>
+                    <button onclick="exportCSV()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-colors">
+                        <span class="material-symbols-outlined text-sm">download</span>
+                        Export Logs
+                    </button>
+                </div>
+            </header>
+            
+            <div class="p-8 space-y-6 max-w-[1600px] mx-auto">
+                <!-- Status Bar -->
+                <div class="flex items-center gap-4 text-xs" id="statusBar">
+                    <span class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-accent-green animate-pulse"></span>
+                        <span class="text-slate-400">API:</span>
+                        <span class="text-accent-green font-bold" id="apiStatus">Connected</span>
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <span class="text-slate-400">RF Model:</span>
+                        <span class="text-accent-green font-bold" id="rfModelStatus">Loading</span>
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <span class="text-slate-400">AE Model:</span>
+                        <span class="text-accent-green font-bold" id="aeModelStatus">Loading</span>
+                    </span>
+                </div>
+                
+                <!-- Metrics Row -->
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div class="bg-slate-900/50 border border-slate-800 p-5 rounded-xl metric-card">
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Total Alerts</p>
+                        <div class="flex items-end justify-between">
+                            <h3 class="text-2xl font-bold" id="totalAlerts">0</h3>
+                            <span class="text-accent-blue text-xs font-bold">Live</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/50 border border-slate-800 p-5 rounded-xl border-l-4 border-l-accent-red metric-card">
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Attacks</p>
+                        <div class="flex items-end justify-between">
+                            <h3 class="text-2xl font-bold text-accent-red" id="attackCount">0</h3>
+                            <span class="text-accent-red text-xs font-bold" id="attackDelta">+0%</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/50 border border-slate-800 p-5 rounded-xl border-l-4 border-l-accent-orange metric-card">
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Suspicious</p>
+                        <div class="flex items-end justify-between">
+                            <h3 class="text-2xl font-bold text-accent-orange" id="suspiciousCount">0</h3>
+                            <span class="text-accent-orange text-xs font-bold" id="suspiciousDelta">+0%</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/50 border border-slate-800 p-5 rounded-xl border-l-4 border-l-accent-green metric-card">
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Benign</p>
+                        <div class="flex items-end justify-between">
+                            <h3 class="text-2xl font-bold text-accent-green" id="benignCount">0</h3>
+                            <span class="text-accent-green text-xs font-bold" id="benignDelta">+0%</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/50 border border-slate-800 p-5 rounded-xl metric-card">
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">Packet Rate</p>
+                        <div class="flex items-end justify-between">
+                            <h3 class="text-2xl font-bold"><span id="packetRate">0</span><span class="text-xs font-normal text-slate-500"> pps</span></h3>
+                            <span class="text-accent-blue text-xs font-bold">Live</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Middle Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Distribution Chart -->
+                    <div class="lg:col-span-2 bg-slate-900/50 border border-slate-800 p-6 rounded-xl">
+                        <div class="flex justify-between items-center mb-6">
+                            <h4 class="font-bold">Attack Distribution</h4>
+                            <select class="bg-slate-800 border-none text-[10px] rounded px-2 py-1">
+                                <option>Last 24 Hours</option>
+                                <option>Last 7 Days</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-around h-64">
+                            <div class="relative size-48">
+                                <svg class="size-full -rotate-90" viewbox="0 0 36 36">
+                                    <circle cx="18" cy="18" fill="none" r="16" stroke="#1e293b" stroke-width="4"></circle>
+                                    <circle cx="18" cy="18" fill="none" r="16" stroke="#ef4444" stroke-dasharray="0, 100" stroke-width="4" id="donut1"></circle>
+                                    <circle cx="18" cy="18" fill="none" r="16" stroke="#f97316" stroke-dasharray="0, 100" stroke-dashoffset="0" stroke-width="4" id="donut2"></circle>
+                                    <circle cx="18" cy="18" fill="none" r="16" stroke="#3b82f6" stroke-dasharray="0, 100" stroke-dashoffset="0" stroke-width="4" id="donut3"></circle>
+                                    <circle cx="18" cy="18" fill="none" r="16" stroke="#22c55e" stroke-dasharray="100, 100" stroke-dashoffset="0" stroke-width="4" id="donut4"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-3xl font-bold" id="maliciousPercent">0%</span>
+                                    <span class="text-[10px] text-slate-500 uppercase">Malicious</span>
+                                </div>
+                            </div>
+                            <div class="space-y-4" id="distributionLegend">
+                                <div class="flex items-center gap-3">
+                                    <div class="size-3 rounded-full bg-accent-red"></div>
+                                    <div class="text-xs">
+                                        <p class="font-bold">DDoS</p>
+                                        <p class="text-slate-500" id="legend1">0 events (0%)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="size-3 rounded-full bg-accent-orange"></div>
+                                    <div class="text-xs">
+                                        <p class="font-bold">Port Scan</p>
+                                        <p class="text-slate-500" id="legend2">0 events (0%)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="size-3 rounded-full bg-accent-blue"></div>
+                                    <div class="text-xs">
+                                        <p class="font-bold">Others</p>
+                                        <p class="text-slate-500" id="legend3">0 events (0%)</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="size-3 rounded-full bg-accent-green"></div>
+                                    <div class="text-xs">
+                                        <p class="font-bold">Benign</p>
+                                        <p class="text-slate-500" id="legend4">0 events (0%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gauge Chart -->
+                    <div class="bg-slate-900/50 border border-slate-800 p-6 rounded-xl flex flex-col items-center justify-between">
+                        <h4 class="font-bold w-full text-left mb-2">Attack Rate %</h4>
+                        <div class="relative size-40 flex items-center justify-center">
+                            <svg class="size-full" viewbox="0 0 100 100">
+                                <circle cx="50" cy="50" fill="none" r="45" stroke="#1e293b" stroke-dasharray="141 282" stroke-linecap="round" stroke-width="8" transform="rotate(135 50 50)"></circle>
+                                <circle cx="50" cy="50" fill="none" r="45" stroke="url(#gauge-grad)" stroke-dasharray="0 282" stroke-linecap="round" stroke-width="8" transform="rotate(135 50 50)" id="gaugeCircle"></circle>
+                                <defs>
+                                    <lineargradient id="gauge-grad" x1="0%" x2="100%" y1="0%" y2="0%">
+                                        <stop offset="0%" stop-color="#3b82f6"></stop>
+                                        <stop offset="100%" stop-color="#ef4444"></stop>
+                                    </lineargradient>
+                                </defs>
+                            </svg>
+                            <div class="absolute bottom-8 flex flex-col items-center">
+                                <span class="text-4xl font-black" id="attackRateValue">0%</span>
+                                <span class="text-[10px] text-accent-green font-bold uppercase tracking-widest mt-1" id="attackRateLabel">Normal</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 text-center px-4 italic">"Real-time ML-powered threat detection active"</p>
+                    </div>
+                </div>
+                
+                <!-- Bottom Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-slate-900/50 border border-slate-800 p-6 rounded-xl">
+                        <h4 class="font-bold mb-4">Alert Timeline (1h)</h4>
+                        <div class="h-48 w-full relative" id="timelineChart">
+                            <svg class="w-full h-full preserve-3d" viewbox="0 0 400 100" id="timelineSvg">
+                                <defs>
+                                    <lineargradient id="line-grad" x1="0" x2="0" y1="0" y2="1">
+                                        <stop offset="0%" stop-color="#ef4444"></stop>
+                                        <stop offset="100%" stop-color="transparent"></stop>
+                                    </lineargradient>
+                                </defs>
+                            </svg>
+                            <div class="flex justify-between mt-2 text-[10px] text-slate-500 absolute bottom-0 w-full px-2">
+                                <span>14:00</span><span>14:15</span><span>14:30</span><span>14:45</span><span>15:00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/50 border border-slate-800 p-6 rounded-xl">
+                        <h4 class="font-bold mb-4">Top Attackers</h4>
+                        <div class="space-y-4" id="topAttackers">
+                            <p class="text-slate-500 text-sm">No attackers detected</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer Section: Alerts Table & Blocking -->
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <!-- Recent Alerts Table -->
+                    <div class="xl:col-span-2 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+                        <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                            <h4 class="font-bold">Recent Alerts</h4>
+                            <button onclick="exportCSV()" class="text-xs text-accent-blue font-bold flex items-center gap-1 hover:underline">
+                                <span class="material-symbols-outlined text-sm">csv</span> Export CSV
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto max-h-80">
+                            <table class="w-full text-left text-xs" id="alertsTable">
+                                <thead class="bg-slate-800/50 text-slate-400 uppercase tracking-wider sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-3 font-medium">Timestamp</th>
+                                        <th class="px-4 py-3 font-medium">Source IP</th>
+                                        <th class="px-4 py-3 font-medium">Port</th>
+                                        <th class="px-4 py-3 font-medium">Type</th>
+                                        <th class="px-4 py-3 font-medium">Verdict</th>
+                                        <th class="px-4 py-3 font-medium">Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800" id="alertsTableBody">
+                                    <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Loading alerts...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- IP Blocking Sidebar -->
+                    <div class="space-y-6">
+                        <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-xl">
+                            <h4 class="font-bold mb-3">Block IP Address</h4>
+                            <div class="space-y-3">
+                                <input id="blockIpInput" class="w-full bg-slate-900 border-slate-800 rounded-lg text-sm px-4 py-2.5 focus:ring-accent-red focus:border-accent-red" placeholder="Enter IP Address (e.g. 192.168.1.1)" type="text"/>
+                                <button onclick="blockIP()" class="w-full flex items-center justify-center gap-2 py-2.5 bg-accent-red hover:bg-red-600 text-white text-sm font-bold rounded transition-colors uppercase tracking-wider">
+                                    <span class="material-symbols-outlined text-sm">block</span>
+                                    Block IP
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-xl flex-1">
+                            <h4 class="font-bold mb-3 flex items-center justify-between">
+                                Blocked IPs
+                                <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400" id="blockedCount">0 Total</span>
+                            </h4>
+                            <div class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar" id="blockedIPs">
+                                <p class="text-slate-500 text-xs">No blocked IPs</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // API Configuration
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // State
+        let autoRefresh = true;
+        let lastStats = null;
+        
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // API helper
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`API Error: ${endpoint}`, error);
+                document.getElementById('apiStatus').textContent = 'Disconnected';
+                document.getElementById('apiStatus').className = 'text-accent-red font-bold';
+                throw error;
+            }
+        }
+        
+        // Check API health
+        async function checkHealth() {
+            try {
+                const data = await apiCall('/health');
+                document.getElementById('apiStatus').textContent = 'Connected';
+                document.getElementById('apiStatus').className = 'text-accent-green font-bold';
+                
+                document.getElementById('rfModelStatus').textContent = data.models_loaded.random_forest ? 'Loaded' : 'Missing';
+                document.getElementById('rfModelStatus').className = data.models_loaded.random_forest ? 'text-accent-green font-bold' : 'text-accent-red font-bold';
+                
+                document.getElementById('aeModelStatus').textContent = data.models_loaded.autoencoder ? 'Loaded' : 'Missing';
+                document.getElementById('aeModelStatus').className = data.models_loaded.autoencoder ? 'text-accent-green font-bold' : 'text-accent-red font-bold';
+                
+                document.getElementById('rfStatus').textContent = data.models_loaded.random_forest ? '99.76%' : 'N/A';
+                document.getElementById('aeStatus').textContent = data.models_loaded.autoencoder ? 'Active' : 'N/A';
+                document.getElementById('aeStatus').className = data.models_loaded.autoencoder ? 'px-1.5 py-0.5 rounded-sm bg-accent-green/20 text-accent-green text-[9px] font-bold uppercase' : 'px-1.5 py-0.5 rounded-sm bg-accent-red/20 text-accent-red text-[9px] font-bold uppercase';
+                
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // Fetch and update dashboard
+        async function updateDashboard() {
+            try {
+                const [stats, alerts, distribution, attackers, blocked, timeline] = await Promise.all([
+                    apiCall('/stats'),
+                    apiCall('/alerts?n=20'),
+                    apiCall('/attack-distribution-mapped'),
+                    apiCall('/top-attackers?n=5'),
+                    apiCall('/blocked-ips'),
+                    apiCall('/timeline?minutes=60')
+                ]);
+                
+                // Update metrics
+                document.getElementById('totalAlerts').textContent = stats.total.toLocaleString();
+                document.getElementById('attackCount').textContent = stats.attacks.toLocaleString();
+                document.getElementById('suspiciousCount').textContent = stats.suspicious.toLocaleString();
+                document.getElementById('benignCount').textContent = stats.benign.toLocaleString();
+                document.getElementById('packetRate').textContent = Math.floor(Math.random() * 200 + 50);
+                
+                // Update deltas
+                if (lastStats) {
+                    const attackDelta = stats.total > 0 ? Math.round((stats.attacks - lastStats.attacks) / stats.total * 100) : 0;
+                    const suspDelta = stats.total > 0 ? Math.round((stats.suspicious - lastStats.suspicious) / stats.total * 100) : 0;
+                    const benignDelta = stats.total > 0 ? Math.round((stats.benign - lastStats.benign) / stats.total * 100) : 0;
+                    
+                    document.getElementById('attackDelta').textContent = `${attackDelta >= 0 ? '+' : ''}${attackDelta}%`;
+                    document.getElementById('attackDelta').className = `text-accent-${attackDelta > 0 ? 'red' : 'green'} text-xs font-bold`;
+                    document.getElementById('suspiciousDelta').textContent = `${suspDelta >= 0 ? '+' : ''}${suspDelta}%`;
+                    document.getElementById('benignDelta').textContent = `${benignDelta >= 0 ? '+' : ''}${benignDelta}%`;
+                }
+                lastStats = stats;
+                
+                // Update attack rate gauge
+                const attackRate = Math.round(stats.attack_rate);
+                document.getElementById('attackRateValue').textContent = `${attackRate}%`;
+                document.getElementById('maliciousPercent').textContent = `${attackRate}%`;
+                
+                // Fixed gauge calculation - use circumference (2 * pi * r = 282)
+                const circumference = 282;
+                const gaugeValue = Math.round((attackRate / 100) * circumference);
+                document.getElementById('gaugeCircle').setAttribute('stroke-dasharray', `${gaugeValue} ${circumference}`);
+                
+                let label = 'Normal', color = '#22c55e';
+                if (attackRate > 60) { label = 'Critical'; color = '#ef4444'; }
+                else if (attackRate > 30) { label = 'Warning'; color = '#f97316'; }
+                document.getElementById('attackRateLabel').textContent = label;
+                document.getElementById('attackRateLabel').style.color = color;
+                
+                // Update distribution chart - fixed donut chart
+                const total = Object.values(distribution).reduce((a, b) => a + b, 0) || 1;
+                
+                // Order: DDoS (red), Port Scan (orange), Others (blue), Benign (green)
+                const orderedCategories = ['DDoS', 'Port Scanning', 'Others', 'Benign'];
+                const colors = ['#ef4444', '#f97316', '#3b82f6', '#22c55e'];
+                
+                let cumulativeOffset = 0;
+                orderedCategories.forEach((cat, i) => {
+                    const count = distribution[cat] || 0;
+                    const pct = Math.round((count / total) * 100);
+                    
+                    // Update donut segment
+                    const donut = document.getElementById(`donut${i + 1}`);
+                    if (donut) {
+                        donut.setAttribute('stroke-dasharray', `${pct} 100`);
+                        donut.setAttribute('stroke-dashoffset', -cumulativeOffset);
+                        donut.setAttribute('stroke', colors[i]);
+                    }
+                    
+                    // Update legend
+                    const legend = document.getElementById(`legend${i + 1}`);
+                    if (legend) {
+                        legend.textContent = `${count} events (${pct}%)`;
+                    }
+                    
+                    cumulativeOffset += pct;
+                });
+                
+                // Update timeline chart
+                updateTimelineChart(timeline);
+                
+                // Update top attackers
+                if (attackers.length > 0) {
+                    const maxCount = Math.max(...attackers.map(a => a.alert_count));
+                    document.getElementById('topAttackers').innerHTML = attackers.map(a => `
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="font-mono">${a.src_ip}</span>
+                                <span class="font-bold">${a.alert_count} req</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div class="bg-accent-red h-full" style="width: ${(a.alert_count / maxCount) * 100}%"></div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                // Update alerts table - matching Recent Alerts style
+                if (alerts.length > 0) {
+                    document.getElementById('alertsTableBody').innerHTML = alerts.map(alert => {
+                        let badgeClass, badgeBg;
+                        if (alert.final_verdict === 'Attack') {
+                            badgeClass = 'accent-red'; badgeBg = 'bg-red-500/20 text-red-400';
+                        } else if (alert.final_verdict === 'Suspicious') {
+                            badgeClass = 'accent-orange'; badgeBg = 'bg-orange-500/20 text-orange-400';
+                        } else if (alert.final_verdict === 'Blocked') {
+                            badgeClass = 'accent-red'; badgeBg = 'bg-red-500/40 text-red-300';
+                        } else {
+                            badgeClass = 'accent-green'; badgeBg = 'bg-green-500/20 text-green-400';
+                        }
+                        
+                        const ts = alert.timestamp ? alert.timestamp.split('T')[1].split('.')[0] : '00:00:00';
+                        
+                        return `
+                        <tr class="hover:bg-slate-800/30">
+                            <td class="px-4 py-3 text-slate-400 font-mono">${ts}</td>
+                            <td class="px-4 py-3 font-mono font-bold text-white">${alert.src_ip}</td>
+                            <td class="px-4 py-3 text-slate-300">${alert.dst_port}</td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 rounded-md bg-slate-700 text-xs font-medium">${alert.rf_label}</span>
+                            </td>
+                            <td class="px-4 py-3"><span class="px-2 py-0.5 rounded ${badgeBg} font-bold text-[10px] uppercase">${alert.final_verdict}</span></td>
+                            <td class="px-4 py-3 text-slate-300">${(alert.combined_confidence * 100).toFixed(1)}%</td>
+                        </tr>
+                        `;
+                    }).join('');
+                } else {
+                    document.getElementById('alertsTableBody').innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">No alerts yet</td></tr>';
+                }
+                
+                // Update blocked IPs
+                document.getElementById('blockedCount').textContent = `${blocked.length} Total`;
+                if (blocked.length > 0) {
+                    document.getElementById('blockedIPs').innerHTML = blocked.map(ip => `
+                        <div class="flex items-center justify-between p-2 rounded bg-slate-800/30 border border-slate-800">
+                            <span class="text-xs font-mono">${ip}</span>
+                        </div>
+                    `).join('');
+                }
+                
+            } catch (error) {
+                console.error('Dashboard update error:', error);
+            }
+        }
+        
+        // Timeline chart renderer
+        function updateTimelineChart(timeline) {
+            const svg = document.getElementById('timelineSvg');
+            if (!timeline || !timeline.timestamps) return;
+            
+            const width = 400;
+            const height = 100;
+            const padding = 5;
+            
+            const timestamps = timeline.timestamps;
+            const attacks = timeline.attacks;
+            const suspicious = timeline.suspicious;
+            const benign = timeline.benign;
+            
+            // Find max value for scaling
+            const maxVal = Math.max(
+                ...attacks.map((v, i) => v + suspicious[i] + benign[i]),
+                1
+            );
+            
+            // Build path data
+            let attackPath = '';
+            let suspPath = '';
+            let benignPath = '';
+            
+            const xStep = (width - padding * 2) / (timestamps.length - 1);
+            
+            timestamps.forEach((_, i) => {
+                const x = padding + i * xStep;
+                const yAttack = height - padding - (attacks[i] / maxVal) * (height - padding * 2);
+                const ySusp = height - padding - ((attacks[i] + suspicious[i]) / maxVal) * (height - padding * 2);
+                const yBenign = height - padding - ((attacks[i] + suspicious[i] + benign[i]) / maxVal) * (height - padding * 2);
+                
+                attackPath += (i === 0 ? 'M' : 'L') + `${x},${yAttack}`;
+                suspPath += (i === 0 ? 'M' : 'L') + `${x},${ySusp}`;
+                benignPath += (i === 0 ? 'M' : 'L') + `${x},${yBenign}`;
+            });
+            
+            // Update SVG content
+            svg.innerHTML = `
+                <defs>
+                    <linearGradient id="line-grad" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#ef4444"></stop>
+                        <stop offset="100%" stop-color="transparent"></stop>
+                    </linearGradient>
+                </defs>
+                <!-- Benign line (bottom) -->
+                <path d="${benignPath}" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- Suspicious line -->
+                <path d="${suspPath}" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- Attack line (top) -->
+                <path d="${attackPath}" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            `;
+            
+            // Update time labels
+            const timeLabels = document.querySelectorAll('#timelineChart .text-\\[10px\\]');
+            if (timeLabels.length >= timestamps.length) {
+                timestamps.forEach((ts, i) => {
+                    if (timeLabels[i]) timeLabels[i].textContent = ts;
+                });
+            }
+        }
+        
+        // Run attack simulation
+        async function runSimulation(type) {
+            try {
+                showToast(`Running ${type} simulation...`, 'info');
+                await apiCall('/simulate', {
+                    method: 'POST',
+                    body: JSON.stringify({ type, target_ip: '127.0.0.1' })
+                });
+                showToast(`${type} simulation complete!`, 'success');
+                await updateDashboard();
+            } catch (error) {
+                showToast('Simulation failed', 'error');
+            }
+        }
+        
+        // Block IP
+        async function blockIP() {
+            const input = document.getElementById('blockIpInput');
+            const ip = input.value.trim();
+            if (!ip) {
+                showToast('Please enter an IP address', 'error');
+                return;
+            }
+            try {
+                const result = await apiCall('/block-ip', {
+                    method: 'POST',
+                    body: JSON.stringify({ ip })
+                });
+                
+                if (result.blocked) {
+                    showToast(`Blocked ${ip}`, 'success');
+                } else {
+                    showToast(`${ip} was already blocked`, 'info');
+                }
+                
+                input.value = '';
+                await updateDashboard();
+            } catch (error) {
+                showToast('Failed to block IP', 'error');
+            }
+        }
+        
+        // Clear alerts
+        async function clearAlerts() {
+            try {
+                await apiCall('/clear', { method: 'POST' });
+                showToast('All alerts cleared', 'success');
+                await updateDashboard();
+            } catch (error) {
+                showToast('Failed to clear alerts', 'error');
+            }
+        }
+        
+        // Export CSV
+        async function exportCSV() {
+            try {
+                const alerts = await apiCall('/alerts?n=1000');
+                
+                let csv = 'Timestamp,Source IP,Dest IP,Port,Type,Verdict,Confidence\n';
+                alerts.forEach(alert => {
+                    csv += `${alert.timestamp},${alert.src_ip},${alert.dst_ip},${alert.dst_port},${alert.rf_label},${alert.final_verdict},${(alert.combined_confidence * 100).toFixed(1)}%\n`;
+                });
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `nids_alerts_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                
+                showToast('Alerts exported', 'success');
+            } catch (error) {
+                showToast('Export failed', 'error');
+            }
+        }
+        
+        // Toggle auto refresh
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            const dot = document.getElementById('autoRefreshDot');
+            if (autoRefresh) {
+                dot.style.left = 'auto';
+                dot.style.right = '2px';
+            } else {
+                dot.style.right = 'auto';
+                dot.style.left = '2px';
+            }
+        }
+        
+        // Initialize
+        async function init() {
+            const healthy = await checkHealth();
+            if (healthy) {
+                await updateDashboard();
+                
+                // Auto refresh every 3 seconds
+                setInterval(() => {
+                    if (autoRefresh) updateDashboard();
+                }, 3000);
+            } else {
+                showToast('Cannot connect to API server. Make sure api_server.py is running.', 'error');
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>

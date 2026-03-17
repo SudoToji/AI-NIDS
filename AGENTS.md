@@ -349,3 +349,123 @@ def test_load_dataset_raises_on_missing_file():
 - Could add LLM-based explanations for attacks
 - Not needed for core detection - RF already at 99.76%
 - Could be used as explanation layer
+
+---
+
+## Recent Changes (March 2026 - Dashboard & API)
+
+### 1. Migration from Streamlit to Flask + Custom Dashboard
+
+#### Why
+- Streamlit had limited customization
+- Wanted a fully custom UI
+- Better control over real-time updates
+
+#### What Changed
+- Replaced `src/dashboard/app.py` (Streamlit) with `dashboard.html` (Flask + Vanilla JS)
+- Added Flask API server in `src/api/server.py`
+- Dashboard uses Tailwind CSS with custom styling
+
+#### New Dashboard Features
+- Attack Distribution donut chart
+- Attack Rate gauge
+- Alert Timeline chart
+- Top Attackers list
+- Recent Alerts table with IP blocking
+- Attack simulation buttons
+
+### 2. Model Fixes
+
+#### Problem: Predictions Not Working
+- Model wasn't predicting correctly after switching to Flask API
+- Root cause: wrong feature order in `extract_features()`
+
+#### Fixes Applied
+1. **Feature Extraction** (`src/api/server.py:extract_features`)
+   - Fixed mapping from packet data to 52 CIC-IDS2017 features
+   - Added proper feature order matching `FEATURE_COLUMNS`
+
+2. **Real Data Simulation** (`src/api/server.py:simulate_attack`)
+   - Changed from synthetic data to real CIC-IDS2017 samples
+   - Model now correctly identifies attack types
+
+3. **Autoencoder Threshold** (saved to `models/autoencoder_threshold.npy`)
+   - Changed from 0.5 to 0.2 (optimal based on Youden's J statistic)
+   - Now actually catches anomalies
+
+4. **Verdict Logic** (`src/api/server.py:predict_hybrid`)
+   - Improved fusion logic: RF with high confidence → trust it
+   - Suspicious only when RF uncertain + AE anomaly
+
+### 3. API Endpoints Added
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/attack-distribution-mapped` | Dashboard-friendly attack categories |
+| `/api/timeline` | Time-series data for charts |
+| `/api/health` | Model status check |
+
+### 4. Live Capture Support
+
+Added live packet capture capability:
+- Uses Scapy for packet sniffing
+- Assembles 5-tuple flows
+- Extracts CIC-IDS2017 features
+- Run with `LIVE_CAPTURE=true` environment variable
+
+### 5. Windows Attack Testing
+
+Created `test_attack.py` for Windows testing:
+- DDoS simulation
+- Port Scan simulation
+- Brute Force simulation
+- Normal traffic simulation
+
+### 6. Code Quality
+
+- Fixed API endpoints (CORS, routing)
+- Fixed dashboard JavaScript (proper API calls)
+- Added timeline API endpoint
+- Fixed distribution chart rendering
+
+---
+
+## Running the Project
+
+```bash
+# Activate virtual environment
+cd "C:\Users\Mazen\Desktop\project"
+venv\Scripts\activate
+
+# Start server
+python -m src.api.server
+
+# Open dashboard
+# http://localhost:5000
+```
+
+### Testing Attacks
+
+```bash
+# Option 1: Dashboard buttons
+# Click attack buttons in sidebar
+
+# Option 2: Test script
+python test_attack.py
+# Select attack type 1-5
+
+# Option 3: Live capture
+set LIVE_CAPTURE=true
+python -m src.api.server
+```
+
+---
+
+## Model Performance
+
+| Metric | Value |
+|--------|-------|
+| Random Forest Accuracy | 99.76% |
+| Autoencoder Threshold | 0.2 |
+| Attack Classes | 7 (DDoS, DoS, Port Scanning, Brute Force, Web Attacks, Bots, Normal Traffic) |
+| Alert Storage | 1000 in-memory |
