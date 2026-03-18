@@ -15,8 +15,9 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import threading
 from dataclasses import dataclass, asdict
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from typing import Dict, List, Optional
 from collections import deque
 
@@ -29,13 +30,53 @@ from tensorflow import keras
 
 from src.features.extractor import FEATURE_COLUMNS
 
+# ============================================================================
+# CONSTANTS - Magic numbers extracted for maintainability
+# ============================================================================
+
+# Model settings
+DEFAULT_AE_THRESHOLD = 0.5
+DEFAULT_ALERT_MAX_SIZE = 1000
+
+# API settings
+DEFAULT_ALERTS_LIMIT = 100
+DEFAULT_TOP_ATTACKERS_LIMIT = 10
+DEFAULT_TIMELINE_MINUTES = 60
+TIMELINE_BUCKET_MINUTES = 5
+
+# Simulation settings
+DEFAULT_SAMPLE_COUNT = 30
+DEFAULT_FALLBACK_COUNT_MIN = 10
+DEFAULT_FALLBACK_COUNT_MAX = 30
+
+# Feature indices (for direct numpy access without DataFrame)
+FEATURE_PORT = 0
+FEATURE_FLOW_DURATION = 1
+FEATURE_TOTAL_FWD_PACKETS = 2
+FEATURE_TOTAL_LEN_FWD = 3
+FEATURE_FWD_PACKET_LEN_MAX = 4
+FEATURE_FWD_PACKET_LEN_MIN = 5
+FEATURE_FWD_PACKET_LEN_MEAN = 6
+FEATURE_FWD_PACKET_LEN_STD = 7
+FEATURE_BWD_PACKET_LEN_MAX = 8
+FEATURE_BWD_PACKET_LEN_MIN = 9
+FEATURE_BWD_PACKET_LEN_MEAN = 10
+FEATURE_BWD_PACKET_LEN_STD = 11
+
+# ============================================================================
+# LOGGING SETUP
+# ============================================================================
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder=None)
 
-# Enable CORS for all routes - must be before route definitions
+# Enable CORS for all routes - configure for production by restricting origins
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Thread lock for AlertStore thread safety
+_alert_store_lock = threading.Lock()
 
 @app.route('/')
 def index():
@@ -72,46 +113,46 @@ def load_models():
         # Load Random Forest
         rf_path = os.path.join(PROJECT_ROOT, "models", "rf_model.pkl")
         rf_model = joblib.load(rf_path)
-        logger.info(f"✓ Loaded Random Forest from {rf_path}")
+        logger.info(f"[OK] Loaded Random Forest from {rf_path}")
     except Exception as e:
-        logger.error(f"✗ Failed to load RF model: {e}")
+        logger.error(f"[FAIL] Failed to load RF model: {e}")
         rf_model = None
     
     try:
         # Load RF metadata
         metadata_path = os.path.join(PROJECT_ROOT, "models", "rf_metadata.pkl")
         rf_metadata = joblib.load(metadata_path)
-        logger.info(f"✓ Loaded RF metadata from {metadata_path}")
+        logger.info(f"[OK] Loaded RF metadata from {metadata_path}")
     except Exception as e:
-        logger.warning(f"⚠ Failed to load RF metadata: {e}")
+        logger.warning(f"[WARN] Failed to load RF metadata: {e}")
         rf_metadata = {"class_labels": ATTACK_TYPES, "thresholds": {}}
     
     try:
         # Load Scaler
         scaler_path = os.path.join(PROJECT_ROOT, "models", "scaler.pkl")
         scaler = joblib.load(scaler_path)
-        logger.info(f"✓ Loaded Scaler from {scaler_path}")
+        logger.info(f"[OK] Loaded Scaler from {scaler_path}")
     except Exception as e:
-        logger.warning(f"⚠ Failed to load scaler: {e}")
+        logger.warning(f"[WARN] Failed to load scaler: {e}")
         scaler = None
     
     try:
         # Load Autoencoder
         ae_path = os.path.join(PROJECT_ROOT, "models", "autoencoder.keras")
         autoencoder = keras.models.load_model(ae_path)
-        logger.info(f"✓ Loaded Autoencoder from {ae_path}")
+        logger.info(f"[OK] Loaded Autoencoder from {ae_path}")
     except Exception as e:
-        logger.error(f"✗ Failed to load Autoencoder: {e}")
+        logger.error(f"[FAIL] Failed to load Autoencoder: {e}")
         autoencoder = None
     
     try:
         # Load AE threshold
         threshold_path = os.path.join(PROJECT_ROOT, "models", "autoencoder_threshold.npy")
         ae_threshold = np.load(threshold_path)
-        logger.info(f"✓ Loaded AE threshold: {ae_threshold}")
+        logger.info(f"[OK] Loaded AE threshold: {ae_threshold}")
     except Exception as e:
-        logger.warning(f"⚠ Failed to load AE threshold: {e}")
-        ae_threshold = 0.5
+        logger.warning(f"[WARN] Failed to load AE threshold: {e}")
+        ae_threshold = DEFAULT_AE_THRESHOLD
 
 
 # ============================================================================
@@ -140,130 +181,139 @@ class Alert:
 
 
 class AlertStore:
-    """In-memory alert storage."""
+    """Thread-safe in-memory alert storage."""
     
-    def __init__(self, max_size: int = 1000):
+    def __init__(self, max_size: int = DEFAULT_ALERT_MAX_SIZE):
         self.alerts = deque(maxlen=max_size)
         self.blocked_ips = set()
         self.next_id = 1
+        self._lock = threading.Lock()
     
     def add_alert(self, alert: Alert):
-        self.alerts.append(alert)
+        with self._lock:
+            self.alerts.append(alert)
     
-    def get_recent(self, n: int = 100) -> List[Alert]:
-        return list(self.alerts)[-n:]
+    def get_recent(self, n: int = DEFAULT_ALERTS_LIMIT) -> List[Alert]:
+        with self._lock:
+            return list(self.alerts)[-n:]
     
     def get_all(self) -> List[Alert]:
-        return list(self.alerts)
+        with self._lock:
+            return list(self.alerts)
     
     def block_ip(self, ip: str) -> bool:
-        if ip in self.blocked_ips:
-            return False
-        self.blocked_ips.add(ip)
-        return True
+        with self._lock:
+            if ip in self.blocked_ips:
+                return False
+            self.blocked_ips.add(ip)
+            return True
     
     def unblock_ip(self, ip: str) -> bool:
-        if ip not in self.blocked_ips:
-            return False
-        self.blocked_ips.discard(ip)
-        return True
+        with self._lock:
+            if ip not in self.blocked_ips:
+                return False
+            self.blocked_ips.discard(ip)
+            return True
     
     def get_blocked_ips(self) -> List[str]:
-        return list(self.blocked_ips)
+        with self._lock:
+            return list(self.blocked_ips)
     
     def is_blocked(self, ip: str) -> bool:
-        return ip in self.blocked_ips
+        with self._lock:
+            return ip in self.blocked_ips
     
     def clear(self):
-        self.alerts.clear()
-        self.next_id = 1
+        with self._lock:
+            self.alerts.clear()
+            self.next_id = 1
     
     def get_attack_distribution(self) -> Dict[str, int]:
-        distribution = {}
-        for alert in self.alerts:
-            label = alert.rf_label if alert.rf_label else "Normal Traffic"
-            distribution[label] = distribution.get(label, 0) + 1
-        return distribution
+        with self._lock:
+            distribution = {}
+            for alert in self.alerts:
+                label = alert.rf_label if alert.rf_label else "Normal Traffic"
+                distribution[label] = distribution.get(label, 0) + 1
+            return distribution
     
-    def get_top_attackers(self, n: int = 10) -> List[Dict]:
-        ip_counts = {}
-        for alert in self.alerts:
-            if alert.final_verdict in ["Attack", "Suspicious"]:
-                ip_counts[alert.src_ip] = ip_counts.get(alert.src_ip, 0) + 1
-        
-        sorted_ips = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:n]
-        return [{"src_ip": ip, "alert_count": count} for ip, count in sorted_ips]
+    def get_top_attackers(self, n: int = DEFAULT_TOP_ATTACKERS_LIMIT) -> List[Dict]:
+        with self._lock:
+            ip_counts = {}
+            for alert in self.alerts:
+                if alert.final_verdict in ["Attack", "Suspicious"]:
+                    ip_counts[alert.src_ip] = ip_counts.get(alert.src_ip, 0) + 1
+            
+            sorted_ips = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:n]
+            return [{"src_ip": ip, "alert_count": count} for ip, count in sorted_ips]
     
     def get_stats(self) -> Dict:
-        total = len(self.alerts)
-        attacks = sum(1 for a in self.alerts if a.final_verdict == "Attack")
-        suspicious = sum(1 for a in self.alerts if a.final_verdict == "Suspicious")
-        benign = total - attacks - suspicious
-        
-        return {
-            "total": total,
-            "attacks": attacks,
-            "suspicious": suspicious,
-            "benign": benign,
-            "attack_rate": (attacks + suspicious) / total * 100 if total > 0 else 0
-        }
+        with self._lock:
+            total = len(self.alerts)
+            attacks = sum(1 for a in self.alerts if a.final_verdict == "Attack")
+            suspicious = sum(1 for a in self.alerts if a.final_verdict == "Suspicious")
+            benign = total - attacks - suspicious
+            
+            return {
+                "total": total,
+                "attacks": attacks,
+                "suspicious": suspicious,
+                "benign": benign,
+                "attack_rate": (attacks + suspicious) / total * 100 if total > 0 else 0
+            }
     
-    def get_timeline(self, minutes: int = 60) -> Dict[str, List[Dict]]:
+    def get_timeline(self, minutes: int = DEFAULT_TIMELINE_MINUTES) -> Dict[str, List[Dict]]:
         """Get alert timeline for the last N minutes.
         
         Returns:
             Dict with 'timestamps' (labels) and 'attacks', 'suspicious', 'benign' arrays
         """
-        from datetime import datetime, timedelta, UTC
-        
-        now = datetime.now(UTC)
-        cutoff = now - timedelta(minutes=minutes)
-        
-        # Create time buckets (every 5 minutes)
-        bucket_size = 5
-        num_buckets = minutes // bucket_size
-        
-        # Initialize buckets
-        buckets = {i: {"attacks": 0, "suspicious": 0, "benign": 0} for i in range(num_buckets)}
-        
-        for alert in self.alerts:
-            try:
-                alert_time = datetime.fromisoformat(alert.timestamp.replace('Z', '+00:00'))
-                if alert_time < cutoff:
+        with self._lock:
+            now = datetime.now(UTC)
+            cutoff = now - timedelta(minutes=minutes)
+            
+            # Create time buckets
+            bucket_size = TIMELINE_BUCKET_MINUTES
+            num_buckets = minutes // bucket_size
+            
+            buckets = {i: {"attacks": 0, "suspicious": 0, "benign": 0} for i in range(num_buckets)}
+            
+            for alert in self.alerts:
+                try:
+                    alert_time = datetime.fromisoformat(alert.timestamp.replace('Z', '+00:00'))
+                    if alert_time < cutoff:
+                        continue
+                    
+                    minutes_ago = (now - alert_time).total_seconds() / 60
+                    bucket_idx = num_buckets - 1 - int(minutes_ago // bucket_size)
+                    if 0 <= bucket_idx < num_buckets:
+                        if alert.final_verdict == "Attack":
+                            buckets[bucket_idx]["attacks"] += 1
+                        elif alert.final_verdict == "Suspicious":
+                            buckets[bucket_idx]["suspicious"] += 1
+                        else:
+                            buckets[bucket_idx]["benign"] += 1
+                except (ValueError, AttributeError):
                     continue
-                
-                # Calculate bucket index
-                minutes_ago = (now - alert_time).total_seconds() / 60
-                bucket_idx = num_buckets - 1 - int(minutes_ago // bucket_size)
-                if 0 <= bucket_idx < num_buckets:
-                    if alert.final_verdict == "Attack":
-                        buckets[bucket_idx]["attacks"] += 1
-                    elif alert.final_verdict == "Suspicious":
-                        buckets[bucket_idx]["suspicious"] += 1
-                    else:
-                        buckets[bucket_idx]["benign"] += 1
-            except:
-                continue
-        
-        # Build response
-        timestamps = []
-        attacks_data = []
-        suspicious_data = []
-        benign_data = []
-        
-        for i in range(num_buckets):
-            time_label = now - timedelta(minutes=(num_buckets - i - 1) * bucket_size)
-            timestamps.append(time_label.strftime("%H:%M"))
-            attacks_data.append(buckets[i]["attacks"])
-            suspicious_data.append(buckets[i]["suspicious"])
-            benign_data.append(buckets[i]["benign"])
-        
-        return {
-            "timestamps": timestamps,
-            "attacks": attacks_data,
-            "suspicious": suspicious_data,
-            "benign": benign_data
-        }
+            
+            # Build response
+            timestamps = []
+            attacks_data = []
+            suspicious_data = []
+            benign_data = []
+            
+            for i in range(num_buckets):
+                time_label = now - timedelta(minutes=(num_buckets - i - 1) * bucket_size)
+                timestamps.append(time_label.strftime("%H:%M"))
+                attacks_data.append(buckets[i]["attacks"])
+                suspicious_data.append(buckets[i]["suspicious"])
+                benign_data.append(buckets[i]["benign"])
+            
+            return {
+                "timestamps": timestamps,
+                "attacks": attacks_data,
+                "suspicious": suspicious_data,
+                "benign": benign_data
+            }
 
 
 alert_store = AlertStore()
@@ -895,18 +945,40 @@ def predict():
     """Predict for a single packet."""
     data = request.get_json()
     
+    if not data:
+        return jsonify({"error": "Request body required"}), 400
+    
+    # Basic input validation
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request must be JSON object"}), 400
+    
     try:
         alert = process_packet(data)
         return jsonify(alert.to_dict())
     except Exception as e:
+        logger.error(f"Prediction error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/simulate", methods=["POST"])
 def simulate():
     """Run attack simulation."""
-    data = request.get_json()
+    data = request.get_json() or {}
+    
+    # Input validation
     attack_type = data.get("type", "normal")
+    target_ip = data.get("target_ip", "127.0.0.1")
+    
+    # Validate attack_type
+    valid_types = ["normal", "ddos", "synflood", "portscan", "slowloris", "bruteforce", "webattacks"]
+    if attack_type not in valid_types:
+        return jsonify({
+            "error": f"Invalid attack type. Must be one of: {', '.join(valid_types)}"
+        }), 400
+    
+    # Validate target_ip format (basic check)
+    if not target_ip or not isinstance(target_ip, str):
+        return jsonify({"error": "Valid target_ip required"}), 400
     target_ip = data.get("target_ip", "127.0.0.1")
     
     if attack_type == "normal":
@@ -951,62 +1023,64 @@ if __name__ == "__main__":
         try:
             from src.capture.sniffer import PacketSniffer
             from src.features.extractor import extract_live_features
-            import joblib
-            import numpy as np
             
             logger.info("Starting live packet capture...")
             
-            # Load models for live prediction
-            scaler = joblib.load("models/scaler.pkl")
-            rf_model = joblib.load("models/rf_model.pkl")
-            rf_meta = joblib.load("models/rf_metadata.pkl")
-            
-            def on_flow_complete(flow_data):
-                """Process live flow and generate alert."""
-                try:
-                    # Extract features
-                    features_df = extract_live_features(flow_data)
-                    features_scaled = scaler.transform(features_df)
-                    
-                    # Predict
-                    pred = rf_model.predict(features_scaled)[0]
-                    rf_label = rf_meta["class_labels"][int(pred)]
-                    proba = rf_model.predict_proba(features_scaled)[0]
-                    
-                    # Determine verdict
-                    if rf_label in ["Normal Traffic", "Benign"]:
-                        verdict = "Benign"
-                        confidence = float(max(proba))
-                    else:
-                        verdict = "Attack"
-                        confidence = float(max(proba))
-                    
-                    # Create alert
-                    alert = Alert(
-                        id=alert_store.next_id,
-                        timestamp=datetime.now(UTC).isoformat(),
-                        src_ip=flow_data.get("src_ip", "0.0.0.0"),
-                        dst_ip=flow_data.get("dst_ip", "0.0.0.0"),
-                        src_port=flow_data.get("src_port", 0),
-                        dst_port=flow_data.get("dst_port", 0),
-                        protocol=flow_data.get("protocol", 6),
-                        rf_label=rf_label,
-                        ae_is_anomaly=False,
-                        final_verdict=verdict,
-                        combined_confidence=confidence
-                    )
-                    alert_store.next_id += 1
-                    alert_store.add_alert(alert)
-                    logger.info(f"Live alert: {rf_label} - {verdict}")
-                    
-                except Exception as e:
-                    logger.error(f"Live capture error: {e}")
-            
-            # Start sniffer
-            sniffer = PacketSniffer(on_flow_complete=on_flow_complete)
-            sniffer.start()
-            logger.info("Live packet capture started on interface")
-            
+            # Use already loaded global models instead of reloading
+            # Models are loaded at startup via load_models()
+            if scaler is None or rf_model is None or rf_metadata is None:
+                logger.error("Models not loaded properly at startup")
+            else:
+                def on_flow_complete(flow_data):
+                    """Process live flow and generate alert."""
+                    try:
+                        # Extract features
+                        features_df = extract_live_features(flow_data)
+                        features_scaled = scaler.transform(features_df)
+                        
+                        # Predict using already loaded global models
+                        pred = rf_model.predict(features_scaled)[0]
+                        rf_label = rf_metadata["class_labels"][int(pred)]
+                        proba = rf_model.predict_proba(features_scaled)[0]
+                        
+                        # Determine verdict
+                        if rf_label in ["Normal Traffic", "Benign"]:
+                            verdict = "Benign"
+                            confidence = float(max(proba))
+                        else:
+                            verdict = "Attack"
+                            confidence = float(max(proba))
+                        
+                        # Create alert
+                        with _alert_store_lock:
+                            alert = Alert(
+                                id=alert_store.next_id,
+                                timestamp=datetime.now(UTC).isoformat(),
+                                src_ip=flow_data.get("src_ip", "0.0.0.0"),
+                                dst_ip=flow_data.get("dst_ip", "0.0.0.0"),
+                                src_port=flow_data.get("src_port", 0),
+                                dst_port=flow_data.get("dst_port", 0),
+                                protocol=flow_data.get("protocol", 6),
+                                rf_label=rf_label,
+                                rf_confidence=confidence,
+                                ae_anomaly_score=0.0,
+                                ae_is_anomaly=False,
+                                final_verdict=verdict,
+                                combined_confidence=confidence
+                            )
+                            alert_store.next_id += 1
+                            alert_store.add_alert(alert)
+                        
+                        logger.info(f"Live alert: {rf_label} - {verdict}")
+                        
+                    except Exception as e:
+                        logger.error(f"Live capture error: {e}")
+                
+                # Start sniffer
+                sniffer = PacketSniffer(on_flow_complete=on_flow_complete)
+                sniffer.start()
+                logger.info("Live packet capture started on interface")
+        
         except Exception as e:
             logger.error(f"Failed to start live capture: {e}")
             logger.info("Run with LIVE_CAPTURE=true to enable (requires Npcap installed)")
