@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-NIDS Security Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -28,17 +29,40 @@
         }
     </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Space Grotesk', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Fira Code', 'Space Grotesk', sans-serif; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #17141e; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #312b40; border-radius: 10px; }
         
+        /* Neon glow effects */
+        .neon-glow { text-shadow: 0 0 5px currentColor, 0 0 10px currentColor; }
+        .neon-border { box-shadow: 0 0 5px rgba(59, 130, 246, 0.3), 0 0 10px rgba(59, 130, 246, 0.1); }
+        .neon-border-green { box-shadow: 0 0 5px rgba(34, 197, 94, 0.3), 0 0 10px rgba(34, 197, 94, 0.1); }
+        .neon-border-red { box-shadow: 0 0 5px rgba(239, 68, 68, 0.3), 0 0 10px rgba(239, 68, 68, 0.1); }
+        
+        /* Skeleton loading */
+        .skeleton {
+            background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Transitions - 200ms for smooth feel */
         .metric-card { transition: all 0.2s ease; }
         .metric-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3); }
         
+        /* Cursor pointer for all interactive elements */
+        button, .cursor-pointer { cursor: pointer; }
+        
+        /* Loading state */
         .loading { opacity: 0.5; pointer-events: none; }
         
+        /* Toast */
         .toast {
             position: fixed;
             bottom: 20px;
@@ -56,6 +80,12 @@
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Focus states for accessibility */
+        button:focus-visible, input:focus-visible, select:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
         }
     </style>
 </head>
@@ -80,24 +110,24 @@
                 <div>
                     <h3 class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Attack Simulator</h3>
                     <div class="space-y-1">
-                        <button onclick="runSimulation('normal')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors group">
+                        <button onclick="runSimulation('normal')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors group cursor-pointer">
                             <span class="material-symbols-outlined text-sm text-slate-400 group-hover:text-white">monitoring</span>
                             <span class="text-sm font-medium">Generate Normal Traffic</span>
                         </button>
-                        <button onclick="runSimulation('synflood')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 transition-colors group">
+                        <button onclick="runSimulation('synflood')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 transition-colors group cursor-pointer">
                             <span class="material-symbols-outlined text-sm text-accent-red">water_drop</span>
                             <span class="text-sm font-medium">Launch SYN Flood</span>
                         </button>
-                        <button onclick="runSimulation('portscan')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent-orange/10 transition-colors group">
+                        <button onclick="runSimulation('portscan')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent-orange/10 transition-colors group cursor-pointer">
                             <span class="material-symbols-outlined text-sm text-accent-orange">radar</span>
                             <span class="text-sm font-medium">Run Port Scan</span>
                         </button>
-                        <button onclick="runSimulation('slowloris')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent-blue/10 transition-colors group">
+                        <button onclick="runSimulation('slowloris')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent-blue/10 transition-colors group cursor-pointer">
                             <span class="material-symbols-outlined text-sm text-accent-blue">timer</span>
                             <span class="text-sm font-medium">Start Slowloris</span>
                         </button>
                     </div>
-                    <button onclick="runSimulation('ddos')" class="mt-4 w-full py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-bold rounded transition-all shadow-lg shadow-blue-900/20 uppercase tracking-wider">
+                    <button onclick="runSimulation('ddos')" class="mt-4 w-full py-2 bg-accent-blue hover:bg-blue-600 text-white text-xs font-bold rounded transition-all shadow-lg shadow-blue-900/20 uppercase tracking-wider cursor-pointer neon-glow">
                         Run Full Evaluation
                     </button>
                 </div>
@@ -121,11 +151,11 @@
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="text-sm font-medium">Auto Refresh</span>
-                            <div class="w-8 h-4 bg-accent-blue rounded-full relative cursor-pointer" onclick="toggleAutoRefresh()">
+                            <div class="w-8 h-4 bg-accent-blue rounded-full relative cursor-pointer" onclick="toggleAutoRefresh()" role="switch" aria-checked="true">
                                 <div id="autoRefreshDot" class="absolute right-0.5 top-0.5 size-3 bg-white rounded-full transition-all"></div>
                             </div>
                         </div>
-                        <button onclick="clearAlerts()" class="flex items-center gap-2 text-slate-400 hover:text-accent-red transition-colors">
+                        <button onclick="clearAlerts()" class="flex items-center gap-2 text-slate-400 hover:text-accent-red transition-colors cursor-pointer">
                             <span class="material-symbols-outlined text-sm">delete_sweep</span>
                             <span class="text-sm font-medium">Clear All Alerts</span>
                         </button>
@@ -158,9 +188,9 @@
                 <div class="flex items-center gap-4">
                     <div class="relative">
                         <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-500 text-sm">search</span>
-                        <input class="pl-9 pr-4 py-2 bg-slate-900 border-slate-800 rounded-lg text-xs focus:ring-accent-blue focus:border-accent-blue w-64" placeholder="Search events..." type="text"/>
+                        <input class="pl-9 pr-4 py-2 bg-slate-900 border-slate-800 rounded-lg text-xs focus:ring-accent-blue focus:border-accent-blue w-64 cursor-text" placeholder="Search events..." type="text"/>
                     </div>
-                    <button onclick="exportCSV()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-colors">
+                    <button onclick="exportCSV()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer">
                         <span class="material-symbols-outlined text-sm">download</span>
                         Export Logs
                     </button>
@@ -365,8 +395,8 @@
                         <div class="bg-slate-900/50 border border-slate-800 p-4 rounded-xl">
                             <h4 class="font-bold mb-3">Block IP Address</h4>
                             <div class="space-y-3">
-                                <input id="blockIpInput" class="w-full bg-slate-900 border-slate-800 rounded-lg text-sm px-4 py-2.5 focus:ring-accent-red focus:border-accent-red" placeholder="Enter IP Address (e.g. 192.168.1.1)" type="text"/>
-                                <button onclick="blockIP()" class="w-full flex items-center justify-center gap-2 py-2.5 bg-accent-red hover:bg-red-600 text-white text-sm font-bold rounded transition-colors uppercase tracking-wider">
+                                <input id="blockIpInput" class="w-full bg-slate-900 border-slate-800 rounded-lg text-sm px-4 py-2.5 focus:ring-accent-red focus:border-accent-red cursor-text" placeholder="Enter IP Address (e.g. 192.168.1.1)" type="text"/>
+                                <button onclick="blockIP()" class="w-full flex items-center justify-center gap-2 py-2.5 bg-accent-red hover:bg-red-600 text-white text-sm font-bold rounded transition-colors uppercase tracking-wider cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900">
                                     <span class="material-symbols-outlined text-sm">block</span>
                                     Block IP
                                 </button>
@@ -394,6 +424,7 @@
         // State
         let autoRefresh = true;
         let lastStats = null;
+        let isLoading = true;
         
         // Show toast notification
         function showToast(message, type = 'info') {
@@ -403,6 +434,26 @@
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
+        
+        // Show/hide loading skeletons
+        function setLoadingState(loading) {
+            isLoading = loading;
+            const metrics = document.querySelectorAll('.metric-card');
+            metrics.forEach(card => {
+                if (loading) {
+                    card.classList.add('skeleton');
+                } else {
+                    card.classList.remove('skeleton');
+                }
+            });
+        }
+        
+        // Empty state templates
+        const emptyStates = {
+            alerts: '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-3xl text-slate-600">security</span><p>No alerts detected yet</p><p class="text-xs text-slate-600">Run an attack simulation to see alerts</p></div></td></tr>',
+            attackers: '<div class="flex flex-col items-center justify-center py-8 text-slate-500"><span class="material-symbols-outlined text-3xl text-slate-600 mb-2">shield</span><p class="text-sm">No attackers detected</p><p class="text-xs text-slate-600">Network looks clean</p></div>',
+            blocked: '<div class="flex flex-col items-center justify-center py-4 text-slate-500"><span class="material-symbols-outlined text-2xl text-slate-600 mb-1">block</span><p class="text-xs">No blocked IPs</p></div>'
+        };
         
         // API helper
         async function apiCall(endpoint, options = {}) {
@@ -450,6 +501,8 @@
         // Fetch and update dashboard
         async function updateDashboard() {
             try {
+                setLoadingState(true);
+                
                 const [stats, alerts, distribution, attackers, blocked, timeline] = await Promise.all([
                     apiCall('/stats'),
                     apiCall('/alerts?n=20'),
@@ -458,6 +511,8 @@
                     apiCall('/blocked-ips'),
                     apiCall('/timeline?minutes=60')
                 ]);
+                
+                setLoadingState(false);
                 
                 // Update metrics
                 document.getElementById('totalAlerts').textContent = stats.total.toLocaleString();
@@ -531,16 +586,18 @@
                 if (attackers.length > 0) {
                     const maxCount = Math.max(...attackers.map(a => a.alert_count));
                     document.getElementById('topAttackers').innerHTML = attackers.map(a => `
-                        <div class="space-y-1">
+                        <div class="space-y-1 cursor-pointer">
                             <div class="flex justify-between text-xs mb-1">
                                 <span class="font-mono">${a.src_ip}</span>
                                 <span class="font-bold">${a.alert_count} req</span>
                             </div>
                             <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                                <div class="bg-accent-red h-full" style="width: ${(a.alert_count / maxCount) * 100}%"></div>
+                                <div class="bg-accent-red h-full transition-all duration-300" style="width: ${(a.alert_count / maxCount) * 100}%"></div>
                             </div>
                         </div>
                     `).join('');
+                } else {
+                    document.getElementById('topAttackers').innerHTML = emptyStates.attackers;
                 }
                 
                 // Update alerts table - matching Recent Alerts style
@@ -560,7 +617,7 @@
                         const ts = alert.timestamp ? alert.timestamp.split('T')[1].split('.')[0] : '00:00:00';
                         
                         return `
-                        <tr class="hover:bg-slate-800/30">
+                        <tr class="hover:bg-slate-800/30 cursor-pointer">
                             <td class="px-4 py-3 text-slate-400 font-mono">${ts}</td>
                             <td class="px-4 py-3 font-mono font-bold text-white">${alert.src_ip}</td>
                             <td class="px-4 py-3 text-slate-300">${alert.dst_port}</td>
@@ -573,17 +630,22 @@
                         `;
                     }).join('');
                 } else {
-                    document.getElementById('alertsTableBody').innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">No alerts yet</td></tr>';
+                    document.getElementById('alertsTableBody').innerHTML = emptyStates.alerts;
                 }
                 
                 // Update blocked IPs
                 document.getElementById('blockedCount').textContent = `${blocked.length} Total`;
                 if (blocked.length > 0) {
                     document.getElementById('blockedIPs').innerHTML = blocked.map(ip => `
-                        <div class="flex items-center justify-between p-2 rounded bg-slate-800/30 border border-slate-800">
+                        <div class="flex items-center justify-between p-2 rounded bg-slate-800/30 border border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors">
                             <span class="text-xs font-mono">${ip}</span>
+                            <button onclick="unblockIP('${ip}')" class="text-slate-500 hover:text-accent-green transition-colors" title="Unblock">
+                                <span class="material-symbols-outlined text-sm">check_circle</span>
+                            </button>
                         </div>
                     `).join('');
+                } else {
+                    document.getElementById('blockedIPs').innerHTML = emptyStates.blocked;
                 }
                 
             } catch (error) {
@@ -693,6 +755,24 @@
                 await updateDashboard();
             } catch (error) {
                 showToast('Failed to block IP', 'error');
+            }
+        }
+        
+        // Unblock IP
+        async function unblockIP(ip) {
+            try {
+                const result = await apiCall('/unblock-ip', {
+                    method: 'POST',
+                    body: JSON.stringify({ ip })
+                });
+                
+                if (result.unblocked) {
+                    showToast(`Unblocked ${ip}`, 'success');
+                }
+                
+                await updateDashboard();
+            } catch (error) {
+                showToast('Failed to unblock IP', 'error');
             }
         }
         
