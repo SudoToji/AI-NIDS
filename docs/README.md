@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Accuracy](https://img.shields.io/badge/accuracy-99.76%25-brightgreen)
 
-A machine learning-based network intrusion detection system using a **4-model ensemble** trained on the **CIC-IDS2017 dataset**. Features real-time detection, threat intelligence integration, and a SOC-style web dashboard.
+A machine learning-based network intrusion detection system using a **4-model ensemble** trained on the **CIC-IDS2017 dataset**. Features real-time detection, threat intelligence integration, SIEM analytics, and a SOC-style web dashboard.
 
 ---
 
@@ -18,22 +18,22 @@ A machine learning-based network intrusion detection system using a **4-model en
 - **Anomaly Detection**: Zero-day attack detection via Autoencoder and Isolation Forest
 
 ### Threat Intelligence
-- **VirusTotal Integration**: Malicious IP detection
-- **AbuseIPDB Integration**: IP reputation lookup
-- **AlienVault OTX**: Threat pulse intelligence
-- **GeoIP Lookup**: IP geolocation for attack visualization
+- **VirusTotal Integration**: Malicious IP detection (500/day free)
+- **AbuseIPDB Integration**: IP reputation lookup (5000/day free)
+- **AlienVault OTX**: Threat pulse intelligence (unlimited)
+- **GeoIP Lookup**: IP geolocation for attack visualization (ip-api.com)
 
 ### Dashboard & Visualization
 - **Premium SOC UI**: Dark-themed, cyber-styled interface
 - **Live Metrics**: Total alerts, threats blocked, suspicious activity
 - **Attack Distribution**: Interactive donut chart
 - **Threat Velocity**: Real-time alert timeline
-- **Global Threat Map**: Interactive world map showing attack sources
+- **Global Threat Map**: Interactive Leaflet.js world map showing attack sources
 - **Model Orchestration Panel**: View ensemble status and confidence
 - **Investigation Panel**: Deep dive into IP reputation and threat intelligence
 
-### Integration
-- **ELK Stack**: Elasticsearch, Logstash, Kibana for SIEM
+### SIEM Integration
+- **ELK Stack**: Elasticsearch, Logstash, Kibana for centralized logging
 - **REST API**: Full programmatic access
 - **Docker Support**: Containerized deployment
 
@@ -104,8 +104,8 @@ A machine learning-based network intrusion detection system using a **4-model en
 
 ```
 Attack:        ≥2 votes
-Suspicious:    ≥1 vote + anomaly detected
-Benign:        <1 vote
+Suspicious:   ≥1 vote + anomaly detected  
+Benign:       <1 vote
 ```
 
 ---
@@ -143,7 +143,7 @@ http://localhost:5000
 ### Testing Attacks
 
 ```bash
-# Use dashboard buttons
+# Use dashboard buttons:
 # DDoS Attack | SYN Flood | Port Scan | Brute Force | Normal Traffic | Simulate All
 ```
 
@@ -159,43 +159,39 @@ AI-NIDS/
 │   ├── capture/
 │   │   └── sniffer.py             # Live packet capture (Scapy)
 │   ├── features/
-│   │   └── extractor.py            # Feature extraction (52 features)
+│   │   └── extractor.py           # Feature extraction (52 features)
 │   ├── models/
 │   │   ├── train_rf.py            # Random Forest training
-│   │   ├── train_xgb.py            # XGBoost training
+│   │   ├── train_xgb.py           # XGBoost training
 │   │   ├── train_isolation_forest.py
-│   │   ├── autoencoder.py          # Autoencoder training
-│   │   ├── hybrid_predictor.py      # Ensemble fusion logic
-│   │   └── ensemble_voting.py       # Voting implementation
+│   │   ├── autoencoder.py         # Autoencoder training
+│   │   ├── hybrid_predictor.py    # Ensemble fusion logic
+│   │   └── ensemble_voting.py     # Voting implementation
 │   ├── integration/
-│   │   ├── elk_forwarder.py         # → ELK Stack
-│   │   ├── ti_client.py             # Threat Intelligence
-│   │   └── enricher.py              # Alert enrichment
+│   │   ├── elk_forwarder.py       # → ELK Stack
+│   │   ├── ti_client.py           # Threat Intelligence
+│   │   └── enricher.py           # Alert enrichment
 │   └── utils/
-│       └── geoip.py                 # GeoIP lookup
-├── models/                          # Trained models
-│   ├── rf_model.pkl               # Random Forest (99.76%)
-│   ├── xgb_model.json              # XGBoost
-│   ├── if_model.pkl                # Isolation Forest
-│   ├── autoencoder.keras           # Autoencoder
-│   ├── scaler.pkl                  # Feature scaler
-│   └── autoencoder_threshold.npy    # AE threshold
+│       └── geoip.py               # GeoIP lookup
+├── models/                        # Trained models
+│   ├── rf_model.pkl              # Random Forest (99.76%)
+│   ├── xgb_model.json            # XGBoost
+│   ├── if_model.pkl              # Isolation Forest
+│   ├── autoencoder.keras         # Autoencoder
+│   ├── scaler.pkl                # Feature scaler
+│   └── autoencoder_threshold.npy  # AE threshold
 ├── web/
-│   └── index.html                  # SOC Dashboard UI
-├── elk/                            # ELK Stack configs
+│   └── index.html                # SOC Dashboard UI
+├── elk/                          # ELK Stack configs
 │   ├── docker-compose.elk.yml
 │   └── logstash/pipeline/
-│       └── nids.conf               # Logstash pipeline
-├── tests/                          # Unit tests
-├── docs/                           # Documentation
-│   ├── README.md
-│   ├── API.md
-│   ├── SETUP.md
-│   └── PHASES.md
+│       └── nids.conf             # Logstash pipeline
+├── tests/                        # Unit tests
+├── docs/                         # Documentation
 ├── requirements.txt
 ├── README.md
 ├── PRODUCTION_ENHANCEMENT_PLAN.md
-└── AGENTS.md                       # Coding guidelines
+└── AGENTS.md                     # Coding guidelines
 ```
 
 ---
@@ -207,12 +203,11 @@ AI-NIDS/
 |----------|--------|-------------|
 | `/api/health` | GET | System health and model status |
 | `/api/stats` | GET | Dashboard statistics |
-| `/api/stats` | GET | Alert counts and rates |
 
 ### Alerts & Detection
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/alerts` | GET | Recent alerts (n=100) |
+| `/api/alerts` | GET | Recent alerts |
 | `/api/attack-distribution` | GET | Attack type counts |
 | `/api/attack-distribution-mapped` | GET | Dashboard categories |
 | `/api/timeline` | GET | Time-series data |
@@ -244,15 +239,15 @@ AI-NIDS/
 
 ## 🕵️ Attack Types Detected
 
-| Attack | Description | Indicators |
-|--------|-------------|------------|
-| **DDoS** | Distributed Denial of Service | High packet rate, single source |
-| **DoS** | Denial of Service | Slowloris, HTTP flood patterns |
-| **Port Scanning** | Network reconnaissance | Sequential port access |
-| **Brute Force** | Credential attacks | Repeated login attempts |
-| **Web Attacks** | HTTP-based attacks | SQLi, XSS, command injection |
-| **Bots** | Compromised hosts | Automated malicious activity |
-| **Normal Traffic** | Legitimate traffic | Standard network behavior |
+| Attack | Description |
+|--------|-------------|
+| **DDoS** | Distributed Denial of Service |
+| **DoS** | Denial of Service (Slowloris, etc.) |
+| **Port Scanning** | Network reconnaissance |
+| **Brute Force** | SSH/FTP credential attacks |
+| **Web Attacks** | HTTP-based attacks |
+| **Bots** | Compromised host activity |
+| **Normal Traffic** | Legitimate traffic |
 
 ---
 
@@ -281,7 +276,7 @@ AI-NIDS/
 
 ### Investigation
 - IP Lookup search with VirusTotal, AbuseIPDB, OTX
-- **Global Threat Map** (Leaflet.js)
+- **Global Threat Map** (Leaflet.js dark map)
 - Intelligence Summary panel
 - IP Information panel
 - Recent Lookups history
@@ -293,43 +288,14 @@ AI-NIDS/
 
 ---
 
-## 🔧 Configuration
-
-### Environment Variables
-
-```bash
-# API Keys (optional)
-VIRUSTOTAL_API_KEY=your_key
-ABUSEIPDB_API_KEY=your_key
-
-# Live Capture
-LIVE_CAPTURE=true  # Enable packet sniffing
-
-# Paths
-MODEL_PATH=models/
-DATA_PATH=data/
-```
-
-### Threshold Tuning
-
-```python
-# Autoencoder (Anomaly Detection)
-ae_threshold = 0.2  # Sensitivity to reconstruction error
-
-# Isolation Forest (Anomaly Detection)
-if_contamination = 0.1  # Expected outlier ratio
-```
-
----
-
 ## 🐳 Docker Deployment
 
 ```bash
 # Start ELK Stack
 docker-compose -f elk/docker-compose.elk.yml up -d
 
-# Start AI-NIDS (optional)
-docker-compose up --build
+# Access Kibana
+# http://localhost:5601
 ```
 
 ---
@@ -349,13 +315,13 @@ docker-compose up --build
 
 ---
 
-## 📚 Documentation
+## 📚 Related Documentation
 
-- [API Documentation](docs/API.md)
-- [Setup Guide](docs/SETUP.md)
-- [Development Phases](docs/PHASES.md)
-- [Production Enhancement Plan](PRODUCTION_ENHANCEMENT_PLAN.md)
-- [Coding Guidelines](AGENTS.md)
+- [API Documentation](API.md)
+- [Setup Guide](SETUP.md)
+- [Development Phases](PHASES.md)
+- [Production Enhancement Plan](../PRODUCTION_ENHANCEMENT_PLAN.md)
+- [Coding Guidelines](../AGENTS.md)
 
 ---
 
@@ -364,12 +330,12 @@ docker-compose up --build
 This project was developed as an academic demonstration of:
 - Machine Learning for cybersecurity
 - Ensemble methods for robust detection
-- SIEM integration
+- SIEM integration with ELK Stack
 - Threat intelligence utilization
 - Modern SOC dashboard design
 
 ### Dataset
-- **CIC-IDS2017**: Canadian Institute for Cybersecurity
+- **CIC-IDS2017**: Canadian Institute for Cybersecurity, University of New Brunswick
 - 7 attack types + normal traffic
 - 52 network flow features
 
@@ -389,16 +355,6 @@ MIT License
 - **Autoencoder**: TensorFlow/Keras
 - **ELK Stack**: Elastic
 - **Threat Intelligence**: VirusTotal, AbuseIPDB, AlienVault OTX
-
----
-
-## 🚀 Future Enhancements
-
-- [ ] Live packet capture with Npcap
-- [ ] Grafana integration for advanced dashboards
-- [ ] Wazuh HIDS agent deployment
-- [ ] Automated response actions
-- [ ] Attack attribution analysis
 
 ---
 

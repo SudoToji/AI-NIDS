@@ -100,19 +100,47 @@ Project/
 
 ## Model Performance
 
-### Random Forest
-- **Accuracy: 99.76%** on 7 classes
-- Classes: Bots, Brute Force, DDoS, DoS, Normal Traffic, Port Scanning, Web Attacks
-- Threshold tuning for Bots (0.81)
+### 4-Model Ensemble Architecture
 
-### Autoencoder
-- Trained on benign traffic only
-- Threshold: 0.5 (adjusted from 0.116 for better separation)
-- Used for zero-day anomaly detection
+The system uses a **4-model ensemble** for robust intrusion detection:
 
-### Hybrid Predictor
-- RF-primary fusion (trusts RF, uses AE as backup for suspicious detection)
-- Result: ~99.76% attack detection with anomaly backup
+1. **Random Forest Classifier**
+   - Accuracy: 99.76% on 7 classes
+   - Classes: Bots, Brute Force, DDoS, DoS, Normal Traffic, Port Scanning, Web Attacks
+   - Votes: 1 (attack/benign classification)
+
+2. **XGBoost Classifier**
+   - Secondary classification model
+   - Votes: 1 (attack/benign classification)
+   - Provides ensemble diversity
+
+3. **Autoencoder**
+   - Trained on benign traffic only
+   - Threshold: 0.2 (Youden's J statistic optimization)
+   - Votes: 0.5 (if anomaly AND low classifier confidence)
+   - Used for zero-day anomaly detection
+
+4. **Isolation Forest**
+   - Anomaly score normalized to 0-1 range
+   - Votes: 0.5 (if anomaly score > 0.5 AND low classifier confidence)
+   - Additional layer for outlier detection
+
+### Ensemble Voting Logic
+
+```
+Verdict = Attack    when attack_votes >= 2
+Verdict = Suspicious when attack_votes >= 1 AND (AE anomaly OR IF anomaly > 0.6)
+Verdict = Benign    otherwise
+```
+
+### Alert Dataclass Fields
+
+Each alert now includes predictions from all models:
+- `rf_label`, `rf_confidence` - Random Forest classification
+- `xgb_label`, `xgb_confidence` - XGBoost classification
+- `ae_anomaly_score`, `ae_is_anomaly` - Autoencoder anomaly
+- `if_anomaly_score`, `if_is_anomaly` - Isolation Forest anomaly
+- `final_verdict`, `combined_confidence` - Ensemble result
 
 ## GitHub Repository
 - **URL**: https://github.com/SudoToji/AI-NIDS
@@ -428,6 +456,22 @@ Created `test_attack.py` for Windows testing:
 - Added timeline API endpoint
 - Fixed distribution chart rendering
 
+### 7. Ensemble Model Expansion (Latest)
+
+Added XGBoost and Isolation Forest for improved detection:
+- **XGBoost** (`xgb_model.json`, `xgb_metadata.pkl`): Secondary classifier
+- **Isolation Forest** (`if_model.pkl`, `if_metadata.pkl`): Anomaly detector
+- Updated Alert dataclass with new fields
+- Ensemble voting: RF(1) + XGB(1) + AE(0.5) + IF(0.5) = 4 votes max
+
+### 8. Threat Intelligence Integration
+
+New `/api/ti/lookup/<ip>` endpoint:
+- Integrates with VirusTotal, AbuseIPDB, AlienVault OTX
+- Returns threat score (0-100), reputation label, and source details
+- Mock data fallback when TI services unavailable
+- Dashboard shows TI scores in investigation panel
+
 ---
 
 ## Running the Project
@@ -466,6 +510,10 @@ python -m src.api.server
 | Metric | Value |
 |--------|-------|
 | Random Forest Accuracy | 99.76% |
+| XGBoost | Secondary classifier |
 | Autoencoder Threshold | 0.2 |
+| Isolation Forest | Anomaly detection layer |
+| Ensemble Voting | 4 models (RF + XGB + AE + IF) |
 | Attack Classes | 7 (DDoS, DoS, Port Scanning, Brute Force, Web Attacks, Bots, Normal Traffic) |
+| Alert Storage | 1000 in-memory |
 | Alert Storage | 1000 in-memory |

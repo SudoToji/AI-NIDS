@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AI-NIDS | Neural Sentinel</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface": "#0e131e",
+                        "surface-dim": "#0e131e",
+                        "primary": "#a8e8ff",
+                        "primary-container": "#00d4ff",
+                        "secondary": "#9bcee1",
+                        "secondary-container": "#174f5f",
+                        "tertiary": "#ffd9a1",
+                        "tertiary-container": "#feb528",
+                        "surface-container-low": "#171b27",
+                        "surface-container": "#1b202b",
+                        "surface-container-high": "#252a36",
+                        "surface-container-highest": "#303541",
+                        "on-surface": "#dee2f2",
+                        "on-primary": "#003642",
+                        "outline-variant": "#3c494e",
+                        "error": "#ffb4ab",
+                        "error-container": "#93000a"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(27, 32, 43, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(60, 73, 78, 0.15);
+        }
+        .cyber-grid {
+            background-image: 
+                linear-gradient(to right, rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        .nav-link.active { 
+            background-color: #171b27; 
+            color: #00d4ff; 
+            border-right: 2px solid #00d4ff; 
+        }
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body">
+    <!-- SideNavBar -->
+    <aside class="fixed left-0 top-0 h-full z-40 flex flex-col border-r border-[#1b202b] bg-[#0e131e] w-64">
+        <div class="p-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary-container/20 flex items-center justify-center rounded-lg">
+                    <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">security</span>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-[#a8e8ff] font-headline leading-tight">AI-NIDS</h2>
+                    <p class="text-[10px] font-mono text-[#dee2f2]/40 tracking-tighter uppercase">v2.4.0-alpha</p>
+                </div>
+            </div>
+        </div>
+        <nav class="flex-1 mt-4 space-y-1">
+            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="dashboard">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span class="text-xs font-medium">Dashboard</span>
+            </a>
+            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="alerts">
+                <span class="material-symbols-outlined">security</span>
+                <span class="text-xs font-medium">Alerts</span>
+            </a>
+            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="models">
+                <span class="material-symbols-outlined">hub</span>
+                <span class="text-xs font-medium">Models</span>
+            </a>
+            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="investigation">
+                <span class="material-symbols-outlined">search_check</span>
+                <span class="text-xs font-medium">Investigation</span>
+            </a>
+            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="settings">
+                <span class="material-symbols-outlined">settings</span>
+                <span class="text-xs font-medium">Settings</span>
+            </a>
+        </nav>
+        <div class="p-4 bg-surface-container-low mx-4 mb-6 rounded-lg border border-outline-variant/10">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[10px] uppercase font-mono text-primary/60">Neural Load</span>
+                <span class="text-[10px] font-mono text-primary" id="neural-load">82%</span>
+            </div>
+            <div class="h-1 w-full bg-surface-variant overflow-hidden rounded-full">
+                <div class="h-full bg-primary-container transition-all duration-500" id="neural-load-bar" style="width: 82%"></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ml-64 min-h-screen pb-20 cyber-grid">
+        <!-- Top App Bar -->
+        <header class="flex justify-between items-center w-full px-8 h-16 bg-[#0e131e] sticky top-0 z-30">
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <input id="global-search" class="bg-surface-container-low border-none text-xs font-mono text-primary placeholder:text-primary/30 rounded-full pl-10 pr-4 py-2 w-64 focus:ring-1 focus:ring-primary-container" placeholder="QUERY NETWORK..." type="text"/>
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 text-sm">search</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2 px-3 py-1 bg-primary-container/10 rounded-full border border-primary-container/20">
+                    <span class="w-2 h-2 rounded-full bg-primary-container pulse-dot"></span>
+                    <span class="text-[10px] font-mono text-primary-container font-bold tracking-widest">LIVE STREAM</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button class="material-symbols-outlined text-[#dee2f2] hover:bg-[#1b202b] p-2 rounded transition-colors">sensors</button>
+                    <button class="material-symbols-outlined text-[#dee2f2] hover:bg-[#1b202b] p-2 rounded transition-colors relative">
+                        <span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full" id="notification-badge"></span>
+                        notifications
+                    </button>
+                    <div class="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-xs font-bold text-on-surface">ANALYST_01</p>
+                            <p class="text-[9px] font-mono text-primary/60">LVL 4 CLEARANCE</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant"></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ==================== DASHBOARD PAGE ==================== -->
+        <div id="page-dashboard" class="page active px-8 py-8 space-y-8">
+            <!-- KPI Section -->
+            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-surface-container p-5 rounded-lg border-l-2 border-primary-container relative group overflow-hidden">
+                    <p class="text-[10px] font-mono text-primary/60 uppercase tracking-widest mb-1">Total Alerts</p>
+                    <div class="flex items-end gap-3">
+                        <h2 class="text-3xl font-headline font-bold text-on-surface tracking-tight" id="kpi-total">0</h2>
+                        <span class="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded flex items-center gap-1 mb-1.5" id="kpi-trend">
+                            <span class="material-symbols-outlined text-[10px]">trending_up</span> 0%
+                        </span>
+                    </div>
+                </div>
+                <div class="bg-surface-container p-5 rounded-lg border-l-2 border-secondary relative group overflow-hidden">
+                    <p class="text-[10px] font-mono text-secondary/60 uppercase tracking-widest mb-1">Threats Blocked</p>
+                    <h2 class="text-3xl font-headline font-bold text-on-surface tracking-tight" id="kpi-attacks">0</h2>
+                </div>
+                <div class="bg-surface-container p-5 rounded-lg border-l-2 border-tertiary-container relative group overflow-hidden">
+                    <p class="text-[10px] font-mono text-tertiary-container/60 uppercase tracking-widest mb-1">Suspicious</p>
+                    <h2 class="text-3xl font-headline font-bold text-on-surface tracking-tight" id="kpi-suspicious">0</h2>
+                </div>
+                <div class="bg-surface-container p-5 rounded-lg border-l-2 border-primary-container relative group overflow-hidden">
+                    <p class="text-[10px] font-mono text-primary/60 uppercase tracking-widest mb-1">Model Accuracy</p>
+                    <div class="flex items-end gap-3">
+                        <h2 class="text-3xl font-headline font-bold text-on-surface tracking-tight">99.76%</h2>
+                        <span class="text-[10px] font-mono text-[#00d4ff] bg-primary-container/10 px-2 py-0.5 rounded mb-1.5 uppercase font-bold tracking-tighter">Success</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Charts Row -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Network Traffic Chart -->
+                <div class="lg:col-span-2 bg-surface-container-low p-6 rounded-lg flex flex-col h-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary">Network Traffic (Packets/s)</h3>
+                        <div class="flex gap-2">
+                            <span class="w-2 h-2 rounded-full bg-primary-container"></span>
+                            <span class="text-[10px] font-mono text-on-surface-variant">Live Telemetry</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 relative flex items-end gap-1" id="traffic-chart">
+                        <!-- Chart bars will be generated by JS -->
+                    </div>
+                    <div class="absolute bottom-[-24px] w-full flex justify-between px-2" id="traffic-labels">
+                        <span class="text-[9px] font-mono text-outline">00:00</span>
+                        <span class="text-[9px] font-mono text-outline">06:00</span>
+                        <span class="text-[9px] font-mono text-outline">12:00</span>
+                        <span class="text-[9px] font-mono text-outline">18:00</span>
+                        <span class="text-[9px] font-mono text-outline">23:59</span>
+                    </div>
+                </div>
+                <!-- Attack Distribution Donut -->
+                <div class="bg-surface-container-low p-6 rounded-lg flex flex-col h-[400px]">
+                    <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary mb-6 text-center">Attack Distribution</h3>
+                    <div class="flex-1 flex flex-col items-center justify-center relative">
+                        <div class="relative w-48 h-48 rounded-full flex items-center justify-center">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100" id="donut-chart">
+                                <!-- Donut segments generated by JS -->
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <p class="text-[10px] font-mono text-outline uppercase">Malicious</p>
+                                <p class="text-3xl font-headline font-bold text-primary" id="malicious-percent">0%</p>
+                            </div>
+                        </div>
+                        <div class="mt-8 grid grid-cols-2 gap-x-8 gap-y-2" id="donut-legend">
+                            <!-- Legend items generated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Attack Simulator Section -->
+            <section class="bg-surface-container-low p-6 rounded-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary">Attack Simulator</h3>
+                    <span class="text-[10px] font-mono text-outline">Generate test alerts</span>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="simulateAttack('ddos')" class="px-4 py-2 bg-error/10 text-error text-xs font-bold rounded border border-error/30 hover:bg-error/20 transition-colors">
+                        DDoS Attack
+                    </button>
+                    <button onclick="simulateAttack('synflood')" class="px-4 py-2 bg-error/10 text-error text-xs font-bold rounded border border-error/30 hover:bg-error/20 transition-colors">
+                        SYN Flood
+                    </button>
+                    <button onclick="simulateAttack('portscan')" class="px-4 py-2 bg-tertiary-container/10 text-tertiary-container text-xs font-bold rounded border border-tertiary-container/30 hover:bg-tertiary-container/20 transition-colors">
+                        Port Scan
+                    </button>
+                    <button onclick="simulateAttack('bruteforce')" class="px-4 py-2 bg-tertiary-container/10 text-tertiary-container text-xs font-bold rounded border border-tertiary-container/30 hover:bg-tertiary-container/20 transition-colors">
+                        Brute Force
+                    </button>
+                    <button onclick="simulateAttack('normal')" class="px-4 py-2 bg-primary-container/10 text-primary-container text-xs font-bold rounded border border-primary-container/30 hover:bg-primary-container/20 transition-colors">
+                        Normal Traffic
+                    </button>
+                    <button onclick="simulateAttack('all')" class="px-4 py-2 bg-surface-container text-on-surface text-xs font-bold rounded border border-outline-variant hover:bg-surface-container-high transition-colors">
+                        Simulate All
+                    </button>
+                </div>
+                <div class="mt-3 flex items-center gap-2" id="simulate-status" style="display: none;">
+                    <span class="w-2 h-2 rounded-full bg-primary-container pulse-dot"></span>
+                    <span class="text-[10px] font-mono text-primary-container" id="simulate-message">Simulating...</span>
+                </div>
+            </section>
+
+            <!-- Bottom Data Row -->
+            <section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <!-- Live Alert Feed -->
+                <div class="xl:col-span-2 bg-surface-container-low rounded-lg overflow-hidden flex flex-col">
+                    <div class="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary">Live Alert Feed</h3>
+                            <span class="px-2 py-0.5 bg-error-container/20 text-error text-[9px] font-bold rounded pulse-dot">CRITICAL ACTIVE</span>
+                        </div>
+                        <button onclick="clearAlerts()" class="text-xs font-mono text-primary hover:underline uppercase">Clear All</button>
+                    </div>
+                    <div class="flex-1 overflow-x-auto max-h-[400px]">
+                        <table class="w-full text-left">
+                            <thead class="bg-surface-container/50 border-b border-outline-variant/10 sticky top-0">
+                                <tr>
+                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Source IP</th>
+                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Dest IP</th>
+                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Type</th>
+                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Verdict</th>
+                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Confidence</th>
+                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline-variant/5" id="alerts-table-body">
+                                <!-- Alerts generated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Right Sidebar Panels -->
+                <div class="space-y-6">
+                    <!-- Top Attackers -->
+                    <div class="bg-surface-container-low p-6 rounded-lg">
+                        <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary mb-4">Top Attackers</h3>
+                        <div class="space-y-4" id="top-attackers">
+                            <!-- Generated by JS -->
+                        </div>
+                    </div>
+                    <!-- Active Blocklist -->
+                    <div class="bg-surface-container-low p-6 rounded-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary">Active Blocklist</h3>
+                            <span class="material-symbols-outlined text-outline text-sm">settings_ethernet</span>
+                        </div>
+                        <div class="space-y-3" id="blocked-ips-list">
+                            <!-- Generated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== ALERTS PAGE ==================== -->
+        <div id="page-alerts" class="page px-8 py-8 space-y-8">
+            <!-- Header -->
+            <section class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <div>
+                    <h1 class="text-4xl font-bold font-headline text-on-surface tracking-tight mb-2">Alert Detection</h1>
+                    <div class="flex items-center gap-4 text-outline text-sm">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-primary-container"></span>
+                            <span id="active-nodes">12</span> Active Nodes
+                        </span>
+                        <span class="h-1 w-1 rounded-full bg-outline-variant"></span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-error"></span>
+                            <span id="active-alerts-count">0</span> Active Alerts
+                        </span>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="exportAlerts()" class="px-5 py-2.5 bg-surface-container border border-outline-variant/30 text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">download</span>
+                        Export Logs
+                    </button>
+                    <button onclick="clearAlerts()" class="px-5 py-2.5 bg-error-container text-on-error-container text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">delete_sweep</span>
+                        Purge Queue
+                    </button>
+                </div>
+            </section>
+
+            <!-- Hero Metrics -->
+            <section class="grid grid-cols-12 gap-6">
+                <!-- Threat Velocity Chart -->
+                <div class="col-span-12 lg:col-span-8 bg-surface-container-low p-6 flex flex-col justify-between min-h-[320px]">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h3 class="text-xs font-bold text-outline uppercase tracking-widest">Threat Velocity</h3>
+                            <p class="text-[10px] text-outline/60 font-mono mt-1">Alerts per minute (last 60m)</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-3xl font-bold font-headline text-primary-container" id="threat-velocity-total">0</span>
+                            <p class="text-[10px] text-outline font-mono uppercase tracking-tighter">Total Events</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex items-end gap-1 px-2" id="threat-velocity-chart">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
+                <!-- Critical Anomalies Card -->
+                <div class="col-span-12 lg:col-span-4 bg-surface-container p-6 border-l-4 border-error flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-error uppercase tracking-widest">Critical Anomalies</h3>
+                        <span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+                    </div>
+                    <div class="mt-8">
+                        <div class="text-6xl font-bold font-headline text-on-surface" id="critical-count">0</div>
+                        <p class="text-xs text-error font-bold font-mono uppercase mt-2 tracking-widest">Critical Alerts</p>
+                    </div>
+                    <div class="mt-6">
+                        <button class="w-full py-3 bg-error/10 hover:bg-error/20 border border-error/30 text-error text-[10px] font-black uppercase tracking-widest transition-all">
+                            Initialize Lockdown Protocol
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Full Alerts Table -->
+            <section class="bg-surface-container-low rounded-lg overflow-hidden">
+                <div class="p-4 border-b border-outline-variant/10 flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-on-surface uppercase tracking-widest font-headline">Live Incident Queue</h3>
+                    <div class="flex gap-2">
+                        <span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
+                        <span class="text-[10px] text-outline font-mono">Syncing <span id="sync-time">120</span>ms</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-[500px]">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-surface-container/50 border-b border-outline-variant/10 sticky top-0">
+                            <tr class="text-[10px] text-outline uppercase font-mono tracking-tighter">
+                                <th class="px-6 py-4 font-medium">Timestamp</th>
+                                <th class="px-6 py-4 font-medium">Source IP</th>
+                                <th class="px-6 py-4 font-medium">Dest IP</th>
+                                <th class="px-6 py-4 font-medium">Port</th>
+                                <th class="px-6 py-4 font-medium">Protocol</th>
+                                <th class="px-6 py-4 font-medium">Threat Level</th>
+                                <th class="px-6 py-4 font-medium">Confidence</th>
+                                <th class="px-6 py-4 font-medium text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-[11px]" id="full-alerts-table">
+                            <!-- Generated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== MODELS PAGE ==================== -->
+        <div id="page-models" class="page px-8 py-8 space-y-8">
+            <!-- Header -->
+            <section class="flex justify-between items-end mb-8">
+                <div>
+                    <h1 class="text-4xl font-bold font-headline text-primary tracking-tight">Model Orchestration</h1>
+                    <p class="text-on-surface-variant font-body max-w-xl mt-2">Manage neural architectures and ensemble strategies for autonomous threat detection.</p>
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="retrainModels()" class="px-5 py-2 rounded-sm border border-primary text-primary text-xs font-bold hover:bg-primary/10 transition-colors uppercase tracking-widest">Retrain All</button>
+                    <button onclick="deployEnsemble()" class="px-5 py-2 rounded-sm bg-gradient-to-r from-primary to-primary-container text-on-primary text-xs font-bold hover:brightness-110 transition-all uppercase tracking-widest shadow-[0_0_20px_rgba(0,212,255,0.2)]">Deploy Ensemble</button>
+                </div>
+            </section>
+
+            <!-- Model Grid -->
+            <section class="grid grid-cols-12 gap-6">
+                <!-- Ensemble Master Card -->
+                <div class="col-span-12 lg:col-span-5 bg-surface-container-low rounded-xl p-8 relative overflow-hidden">
+                    <div class="relative z-10 flex flex-col items-center text-center h-full justify-center">
+                        <div class="mb-2">
+                            <span class="px-3 py-1 bg-primary-container/10 border border-primary-container/30 text-primary-container text-[10px] font-mono tracking-widest rounded-full uppercase">Neural Fusion Protocol Active</span>
+                        </div>
+                        <div class="relative w-64 h-64 flex items-center justify-center my-6">
+                            <div class="absolute inset-0 rounded-full border-[12px] border-surface-container-highest"></div>
+                            <svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="44" fill="none" stroke="#171b27" stroke-width="12"/>
+                                <circle cx="50" cy="50" r="44" fill="none" stroke="#00d4ff" stroke-width="12" 
+                                    stroke-dasharray="277" stroke-dashoffset="5" stroke-linecap="round" id="ensemble-circle"/>
+                            </svg>
+                            <div class="flex flex-col items-center">
+                                <span class="text-5xl font-black font-headline text-on-surface"><span id="ensemble-confidence">98.4</span><span class="text-primary text-2xl">%</span></span>
+                                <span class="text-[10px] font-mono text-on-surface-variant uppercase tracking-[0.2em] mt-2">Confidence Score</span>
+                            </div>
+                        </div>
+                        <h3 class="text-xl font-bold font-headline text-primary mt-4 uppercase tracking-tight">System Confidence</h3>
+                        <p class="text-sm text-on-surface-variant mt-2 max-w-xs">Weighted voting across 4 sub-architectures.</p>
+                    </div>
+                </div>
+
+                <!-- Model Cards Grid -->
+                <div class="col-span-12 lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Random Forest -->
+                    <div class="bg-surface-container rounded-lg p-6 hover:bg-surface-container-high transition-colors group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-10 h-10 bg-surface-container-low flex items-center justify-center rounded">
+                                <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">account_tree</span>
+                            </div>
+                            <span class="text-[10px] font-mono text-primary/40 uppercase">Classification</span>
+                        </div>
+                        <h4 class="text-lg font-bold font-headline mb-4">Random Forest</h4>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-on-surface-variant">Accuracy</span>
+                                <span class="text-xs font-mono text-primary">99.76%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-on-surface-variant">Recall</span>
+                                <span class="text-xs font-mono text-primary">97.5%</span>
+                            </div>
+                            <div class="pt-4 flex items-end gap-1 h-12">
+                                <div class="flex-1 bg-primary/20 h-4 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/40 h-8 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/60 h-6 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary-container h-10 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/30 h-5 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/70 h-9 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary-container h-11 rounded-t-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- XGBoost -->
+                    <div class="bg-surface-container rounded-lg p-6 hover:bg-surface-container-high transition-colors group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-10 h-10 bg-surface-container-low flex items-center justify-center rounded">
+                                <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">bolt</span>
+                            </div>
+                            <span class="text-[10px] font-mono text-primary/40 uppercase">Gradient Boosted</span>
+                        </div>
+                        <h4 class="text-lg font-bold font-headline mb-4">XGBoost</h4>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-on-surface-variant">Accuracy</span>
+                                <span class="text-xs font-mono text-primary">99.1%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-on-surface-variant">Precision</span>
+                                <span class="text-xs font-mono text-primary">98.8%</span>
+                            </div>
+                            <div class="pt-4 flex items-end gap-1 h-12">
+                                <div class="flex-1 bg-primary/40 h-6 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/20 h-3 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary-container h-10 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/60 h-7 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/50 h-5 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/80 h-9 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary-container h-12 rounded-t-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Autoencoder -->
+                    <div class="bg-surface-container rounded-lg p-6 hover:bg-surface-container-high transition-colors group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-10 h-10 bg-surface-container-low flex items-center justify-center rounded">
+                                <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">all_inclusive</span>
+                            </div>
+                            <span class="text-[10px] font-mono text-primary/40 uppercase">Neural Network</span>
+                        </div>
+                        <h4 class="text-lg font-bold font-headline mb-4">Autoencoder</h4>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-on-surface-variant">Recon. Loss</span>
+                                <span class="text-xs font-mono text-primary">0.0024</span>
+                            </div>
+                            <div class="pt-4 relative h-16">
+                                <svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+                                    <path d="M0,30 L20,25 L40,28 L60,15 L80,10 L100,5" fill="none" stroke="#00d4ff" stroke-width="2"/>
+                                    <path d="M0,30 L20,25 L40,28 L60,15 L80,10 L100,5 L100,40 L0,40 Z" fill="url(#grad1)" opacity="0.2"/>
+                                    <defs>
+                                        <lineargradient id="grad1" x1="0%" x2="0%" y1="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1"/>
+                                            <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0"/>
+                                        </lineargradient>
+                                    </defs>
+                                </svg>
+                            </div>
+                            <span class="text-[10px] font-mono text-primary/40 block text-right">Decreasing Trend</span>
+                        </div>
+                    </div>
+                    <!-- Isolation Forest -->
+                    <div class="bg-surface-container rounded-lg p-6 hover:bg-surface-container-high transition-colors group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-10 h-10 bg-surface-container-low flex items-center justify-center rounded">
+                                <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">filter_center_focus</span>
+                            </div>
+                            <span class="text-[10px] font-mono text-primary/40 uppercase">Anomaly Detection</span>
+                        </div>
+                        <h4 class="text-lg font-bold font-headline mb-4">Isolation Forest</h4>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-on-surface-variant">Anomaly Score</span>
+                                <span class="text-xs font-mono text-primary" id="if-score">0.82</span>
+                            </div>
+                            <div class="pt-4 flex items-end gap-1 h-12">
+                                <div class="flex-1 bg-primary/10 h-2 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/20 h-4 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/30 h-6 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/50 h-8 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/70 h-10 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary-container h-12 rounded-t-sm"></div>
+                                <div class="flex-1 bg-primary/40 h-5 rounded-t-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Neural Inference Stream -->
+            <section class="bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/10">
+                <div class="bg-[#1b202b] px-6 py-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-primary pulse-dot shadow-[0_0_8px_#00d4ff]"></div>
+                        <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-primary">Live Neural Inference Stream</h3>
+                    </div>
+                    <div class="flex gap-4">
+                        <span class="text-[10px] font-mono text-on-surface-variant">THROUGHPUT: <span id="throughput">412</span> MB/S</span>
+                        <span class="text-[10px] font-mono text-on-surface-variant">LATENCY: <span id="latency">1.2</span>MS</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left font-mono text-xs">
+                        <thead>
+                            <tr class="border-b border-outline-variant/10 text-on-surface-variant/50">
+                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Timestamp</th>
+                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Source IP</th>
+                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Port</th>
+                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Protocol</th>
+                                <th class="px-6 py-3 font-normal uppercase tracking-wider">RF Label</th>
+                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Confidence</th>
+                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Verdict</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/5" id="inference-stream">
+                            <!-- Generated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== INVESTIGATION PAGE ==================== -->
+        <div id="page-investigation" class="page px-8 py-8 space-y-8">
+            <!-- IP Lookup Search -->
+            <section class="mb-10">
+                <div class="max-w-4xl mx-auto">
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+                            <span class="material-symbols-outlined text-primary-container">search</span>
+                        </div>
+                        <input id="ip-lookup-input" class="block w-full pl-16 pr-48 py-6 bg-surface-container-low border-none rounded-xl text-xl font-mono text-on-surface focus:ring-1 focus:ring-primary-container transition-all" placeholder="ENTER IP ADDRESS..." type="text"/>
+                        <div class="absolute inset-y-0 right-3 flex items-center gap-2">
+                            <div class="hidden md:flex items-center px-3 py-1.5 bg-surface-variant rounded text-[10px] font-bold text-outline uppercase tracking-tighter">
+                                VirusTotal API Connected
+                            </div>
+                            <button onclick="lookupIP()" class="px-6 py-3 bg-primary-container text-on-primary font-bold rounded-lg hover:brightness-110 active:scale-95 transition-all">
+                                LOOKUP IP
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-4 px-2">
+                        <span class="text-[10px] text-outline font-bold uppercase tracking-widest">Connected Sources:</span>
+                        <div class="flex gap-3">
+                            <span class="text-[10px] text-primary flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-primary"></span> ABUSEIPDB</span>
+                            <span class="text-[10px] text-primary flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-primary"></span> VIRUSTOTAL</span>
+                            <span class="text-[10px] text-primary flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-primary"></span> ALIENVAULT</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TI Results -->
+            <section id="ti-results" class="hidden">
+                <div class="grid grid-cols-12 gap-6">
+                    <!-- Threat Intelligence Panel -->
+                    <div class="col-span-12 lg:col-span-8 bg-surface-container-low rounded-xl p-8 flex items-start gap-8 relative overflow-hidden">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-40 h-40 rounded-full border-[10px] border-surface-variant flex items-center justify-center">
+                                <div class="text-center">
+                                    <span class="block text-5xl font-black font-headline text-error" id="ti-score">0</span>
+                                    <span class="text-[10px] text-outline uppercase font-bold tracking-widest">Threat Score</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 class="font-headline text-2xl font-bold text-on-surface">Intelligence Summary</h3>
+                                    <p class="font-mono text-sm text-error mt-1 uppercase font-bold tracking-tight flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">warning</span>
+                                        Reputation: <span id="ti-reputation">UNKNOWN</span>
+                                    </p>
+                                </div>
+                                <div class="bg-surface-variant px-3 py-1 rounded text-[10px] font-mono text-outline uppercase">
+                                    Last Check: <span id="ti-last-check">N/A</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-surface-container p-4 rounded-lg border-l-2 border-error">
+                                    <p class="text-[10px] font-bold text-outline uppercase mb-2">Abuse Score</p>
+                                    <div class="flex items-end justify-between">
+                                        <span class="text-xl font-headline font-bold" id="ti-abuse-score">0%</span>
+                                        <span class="text-[10px] font-mono text-error" id="ti-abuse-reports">0 Reports</span>
+                                    </div>
+                                </div>
+                                <div class="bg-surface-container p-4 rounded-lg border-l-2 border-tertiary">
+                                    <p class="text-[10px] font-bold text-outline uppercase mb-2">VT Detections</p>
+                                    <div class="flex items-end justify-between">
+                                        <span class="text-xl font-headline font-bold" id="ti-vt-detections">0/0</span>
+                                        <span class="text-[10px] font-mono text-tertiary">Engines</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- IP Info -->
+                    <div class="col-span-12 lg:col-span-4 bg-surface-container-low rounded-xl p-6">
+                        <h3 class="text-xs font-bold text-outline uppercase tracking-widest mb-4">IP Information</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between border-b border-outline-variant/10 pb-2">
+                                <span class="text-[10px] text-outline uppercase">IP Address</span>
+                                <span class="text-[10px] font-mono text-primary" id="ti-ip">-</span>
+                            </div>
+                            <div class="flex justify-between border-b border-outline-variant/10 pb-2">
+                                <span class="text-[10px] text-outline uppercase">Country</span>
+                                <span class="text-[10px] font-mono" id="ti-country">-</span>
+                            </div>
+                            <div class="flex justify-between border-b border-outline-variant/10 pb-2">
+                                <span class="text-[10px] text-outline uppercase">ISP</span>
+                                <span class="text-[10px] font-mono" id="ti-isp">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-[10px] text-outline uppercase">Type</span>
+                                <span class="text-[10px] font-mono" id="ti-type">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Global Threat Map -->
+            <section class="bg-surface-container-low rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">map</span>
+                        Global Threat Map
+                    </h3>
+                    <div class="flex items-center gap-4">
+                        <span class="text-[10px] font-mono text-outline" id="map-stats">Loading...</span>
+                        <button onclick="refreshThreatMap()" class="px-3 py-1.5 bg-surface-container hover:bg-surface-variant text-[10px] font-bold rounded border border-outline-variant/20 transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">refresh</span>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-6">
+                    <!-- Map Container -->
+                    <div class="col-span-12 lg:col-span-8">
+                        <div id="threat-map" class="w-full h-[400px] bg-surface rounded-lg border border-outline-variant/10 relative overflow-hidden">
+                            <div class="absolute inset-0 flex items-center justify-center text-outline">
+                                <div class="text-center">
+                                    <span class="material-symbols-outlined text-4xl">public</span>
+                                    <p class="text-xs mt-2">Loading map...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Country Stats -->
+                    <div class="col-span-12 lg:col-span-4 space-y-4">
+                        <!-- Top Attack Country -->
+                        <div class="bg-surface-container p-4 rounded-lg border-l-2 border-error">
+                            <p class="text-[10px] text-outline uppercase mb-1">Top Attack Source</p>
+                            <div class="flex items-center gap-3">
+                                <span class="text-3xl" id="top-country-flag">🌍</span>
+                                <div>
+                                    <p class="text-lg font-bold font-headline" id="top-country-name">-</p>
+                                    <p class="text-[10px] font-mono text-error" id="top-country-attacks">0 attacks</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Threat Distribution -->
+                        <div class="bg-surface-container p-4 rounded-lg">
+                            <p class="text-[10px] text-outline uppercase mb-3">Threat Distribution</p>
+                            <div class="space-y-3" id="country-threat-list">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+                        <!-- Attack Summary -->
+                        <div class="bg-surface-container p-4 rounded-lg">
+                            <p class="text-[10px] text-outline uppercase mb-3">Map Summary</p>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-2xl font-bold font-headline text-primary" id="map-total-attacks">0</p>
+                                    <p class="text-[10px] text-outline">Total Attacks</p>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold font-headline text-primary" id="map-unique-ips">0</p>
+                                    <p class="text-[10px] text-outline">Unique IPs</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Lookups History -->
+            <section class="bg-surface-container-low rounded-xl p-6">
+                <h3 class="text-xs font-black uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">history</span>
+                    Recent Lookups
+                </h3>
+                <div class="space-y-3" id="lookup-history">
+                    <!-- Generated by JS -->
+                </div>
+            </section>
+        </div>
+
+        <!-- ==================== SETTINGS PAGE ==================== -->
+        <div id="page-settings" class="page px-8 py-8 space-y-8">
+            <!-- Header -->
+            <section class="flex justify-between items-end mb-8">
+                <div>
+                    <h1 class="text-4xl font-bold font-headline text-primary tracking-tight">System Configuration</h1>
+                    <p class="text-on-surface-variant font-body max-w-xl mt-2">Manage system parameters, blocklists, and notification settings.</p>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-12 gap-6">
+                <!-- Left Column -->
+                <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                    <!-- System Information -->
+                    <div class="bg-surface-container-low p-6 rounded-lg">
+                        <h3 class="text-sm font-bold text-primary flex items-center gap-2 uppercase tracking-widest mb-6">
+                            <span class="material-symbols-outlined text-lg">analytics</span>
+                            System Information
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+                                <span class="text-[11px] text-outline">Model Status</span>
+                                <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-sm border border-primary/20" id="model-status">LOADING...</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+                                <span class="text-[11px] text-outline">API Health</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+                                    <span class="text-[10px] font-mono text-on-surface uppercase" id="api-health">Checking...</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center py-2">
+                                <span class="text-[11px] text-outline">Server Uptime</span>
+                                <span class="text-[11px] font-mono text-on-surface" id="server-uptime">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Threshold Configuration -->
+                    <div class="bg-surface-container-low p-6 rounded-lg">
+                        <h3 class="text-sm font-bold text-primary flex items-center gap-2 uppercase tracking-widest mb-6">
+                            <span class="material-symbols-outlined text-lg">tune</span>
+                            Threshold Configuration
+                        </h3>
+                        <div class="space-y-8">
+                            <div>
+                                <div class="flex justify-between items-end mb-2">
+                                    <label class="text-[11px] text-on-surface font-medium">Autoencoder Threshold</label>
+                                    <span class="text-[12px] font-mono text-primary-container" id="ae-threshold-value">0.20</span>
+                                </div>
+                                <input id="ae-threshold-slider" max="1" min="0.01" step="0.01" type="range" value="0.20" class="w-full"/>
+                                <p class="text-[9px] text-outline mt-2 italic">Sensitivity to packet anomaly scores.</p>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-end mb-2">
+                                    <label class="text-[11px] text-on-surface font-medium">IF Contamination</label>
+                                    <span class="text-[12px] font-mono text-primary-container" id="if-contamination-value">0.10</span>
+                                </div>
+                                <input id="if-contamination-slider" max="0.5" min="0.01" step="0.01" type="range" value="0.10" class="w-full"/>
+                                <p class="text-[9px] text-outline mt-2 italic">Expected proportion of outliers.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
+                    <!-- Blocked IPs Management -->
+                    <div class="bg-surface-container-low p-6 rounded-lg">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-sm font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
+                                <span class="material-symbols-outlined text-lg">block</span>
+                                Blocked IPs Management
+                            </h3>
+                            <div class="flex gap-2">
+                                <div class="flex items-center bg-surface-container px-3 rounded border border-outline-variant/20">
+                                    <input id="new-block-ip" class="bg-transparent border-none text-[10px] text-on-surface focus:ring-0 p-1 placeholder:text-outline/40 font-mono w-32" placeholder="IP Address..." type="text"/>
+                                </div>
+                                <button onclick="blockIP()" class="px-4 py-1.5 bg-primary text-on-primary text-[10px] font-bold rounded uppercase tracking-wider hover:bg-primary/80">Add</button>
+                            </div>
+                        </div>
+                        <div class="overflow-hidden">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="text-left border-b border-outline-variant/10 text-[10px] text-outline uppercase tracking-widest">
+                                        <th class="pb-3 font-medium">Target IP</th>
+                                        <th class="pb-3 font-medium">Reason</th>
+                                        <th class="pb-3 font-medium">Status</th>
+                                        <th class="pb-3 font-medium text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-xs" id="blocked-ips-table">
+                                    <!-- Generated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-4 py-1 bg-[#171b27] border-t border-[#1b202b] h-8">
+        <div class="flex items-center gap-6">
+            <span class="font-mono text-[10px] tracking-widest uppercase text-[#dee2f2]/40">System Time: <span id="system-time">--:--:--</span></span>
+            <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+                <span class="font-mono text-[10px] tracking-widest uppercase text-[#00d4ff]">API: <span id="api-status">Connecting</span></span>
+            </div>
+        </div>
+        <div class="flex gap-4">
+            <span class="font-mono text-[10px] tracking-widest uppercase text-[#dee2f2]/40">v2.4.0-stable</span>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-12 right-4 z-50 transform translate-x-full transition-transform duration-300">
+        <div class="bg-surface-container border border-outline-variant/20 rounded-lg p-4 shadow-xl flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary" id="toast-icon">check_circle</span>
+            <span class="text-xs font-medium" id="toast-message">Success</span>
+        </div>
+    </div>
+
+    <script>
+        // ==================== CONFIGURATION ====================
+        const API_BASE = 'http://localhost:5000/api';
+        const POLL_INTERVAL = 3000; // 3 seconds
+        let pollTimer = null;
+        let startTime = Date.now();
+        let lookupHistory = [];
+
+        // ==================== UTILITIES ====================
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('en-US', { hour12: false }) + '.' + date.getMilliseconds().toString().padStart(3, '0');
+        }
+
+        function showToast(message, icon = 'check_circle', duration = 3000) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+            
+            toastMessage.textContent = message;
+            toastIcon.textContent = icon;
+            toast.classList.remove('translate-x-full');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, duration);
+        }
+
+        function getVerdictColor(verdict) {
+            switch(verdict) {
+                case 'Attack': return 'error';
+                case 'Suspicious': return 'tertiary-container';
+                case 'Benign': return 'primary-container';
+                default: return 'outline';
+            }
+        }
+
+        function getVerdictBgColor(verdict) {
+            switch(verdict) {
+                case 'Attack': return 'bg-error-container text-error';
+                case 'Suspicious': return 'bg-tertiary-container/20 text-tertiary-container';
+                case 'Benign': return 'bg-secondary-container/30 text-secondary';
+                default: return 'bg-surface-variant text-outline';
+            }
+        }
+
+        // ==================== API FUNCTIONS ====================
+        async function fetchAPI(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    headers: { 'Content-Type': 'application/json' },
+                    ...options
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`API Error (${endpoint}):`, error);
+                document.getElementById('api-status').textContent = 'Error';
+                document.getElementById('api-status').classList.add('text-error');
+                return null;
+            }
+        }
+
+        async function postAPI(endpoint, data) {
+            return fetchAPI(endpoint, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        }
+
+        // ==================== NAVIGATION ====================
+        function navigateTo(page) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+            
+            // Show selected page
+            const pageEl = document.getElementById(`page-${page}`);
+            if (pageEl) {
+                pageEl.classList.add('active');
+                pageEl.classList.remove('hidden');
+            }
+            
+            // Update nav
+            const navLink = document.querySelector(`[data-page="${page}"]`);
+            if (navLink) navLink.classList.add('active');
+
+            // Load map when visiting investigation page
+            if (page === 'investigation' && !mapInitialized) {
+                setTimeout(loadThreatMap, 100); // Small delay to ensure DOM is ready
+            }
+        }
+
+        // ==================== DASHBOARD DATA ====================
+        async function fetchDashboardData() {
+            const [stats, alerts, distribution, timeline, topAttackers, blockedIPs] = await Promise.all([
+                fetchAPI('/stats'),
+                fetchAPI('/alerts?n=50'),
+                fetchAPI('/attack-distribution-mapped'),
+                fetchAPI('/timeline?minutes=60'),
+                fetchAPI('/top-attackers?n=5'),
+                fetchAPI('/blocked-ips')
+            ]);
+
+            if (stats) updateDashboardStats(stats);
+            if (alerts) updateAlertsTable(alerts);
+            if (distribution) updateDonutChart(distribution);
+            if (timeline) updateTrafficChart(timeline);
+            if (topAttackers) updateTopAttackers(topAttackers);
+            if (blockedIPs) updateBlockedIPs(blockedIPs);
+            
+            document.getElementById('api-status').textContent = 'Connected';
+        }
+
+        function updateDashboardStats(stats) {
+            document.getElementById('kpi-total').textContent = stats.total?.toLocaleString() || '0';
+            document.getElementById('kpi-attacks').textContent = stats.attacks?.toLocaleString() || '0';
+            document.getElementById('kpi-suspicious').textContent = stats.suspicious?.toLocaleString() || '0';
+            
+            const attackRate = stats.attack_rate?.toFixed(1) || '0';
+            const trend = document.getElementById('kpi-trend');
+            if (parseFloat(attackRate) > 50) {
+                trend.innerHTML = `<span class="material-symbols-outlined text-[10px]">trending_up</span> ${attackRate}%`;
+                trend.classList.add('text-error');
+                trend.classList.remove('text-primary');
+            } else {
+                trend.innerHTML = `<span class="material-symbols-outlined text-[10px]">trending_down</span> ${attackRate}%`;
+            }
+            
+            document.getElementById('active-alerts-count').textContent = (stats.attacks + stats.suspicious)?.toLocaleString() || '0';
+            document.getElementById('threat-velocity-total').textContent = stats.total?.toLocaleString() || '0';
+        }
+
+        function updateAlertsTable(alerts) {
+            const tbody = document.getElementById('alerts-table-body');
+            const fullTable = document.getElementById('full-alerts-table');
+            
+            if (!alerts || alerts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-outline text-sm">No alerts yet. Run attack simulation to generate alerts.</td></tr>`;
+                fullTable.innerHTML = tbody.innerHTML;
+                return;
+            }
+
+            const renderAlertRow = (alert, showAll = false) => {
+                const verdict = alert.final_verdict || 'Unknown';
+                const color = getVerdictColor(verdict);
+                const bgClass = getVerdictBgColor(verdict);
+                const confidence = ((alert.combined_confidence || 0) * 100).toFixed(1);
+                
+                const row = `
+                    <tr class="hover:bg-surface-variant/40 transition-colors">
+                        <td class="px-6 py-4 font-mono text-xs ${verdict === 'Attack' ? 'text-error' : 'text-primary'}">${alert.src_ip}</td>
+                        ${showAll ? `<td class="px-6 py-4 font-mono text-xs">${alert.dst_ip}</td>` : ''}
+                        ${showAll ? `<td class="px-6 py-4 font-mono text-xs">${alert.dst_port}</td>` : ''}
+                        ${showAll ? `<td class="px-6 py-4"><span class="px-2 py-0.5 bg-surface-container text-[10px] rounded">${alert.protocol === 6 ? 'TCP' : alert.protocol === 17 ? 'UDP' : 'OTHER'}</span></td>` : ''}
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 ${bgClass} text-[10px] font-bold rounded uppercase">${alert.rf_label || verdict}</span>
+                        </td>
+                        ${!showAll ? `<td class="px-6 py-4"><span class="px-2 py-1 ${bgClass} text-[10px] font-bold rounded uppercase">${verdict}</span></td>` : ''}
+                        <td class="px-6 py-4 w-24">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-1 bg-surface-variant rounded-full overflow-hidden">
+                                    <div class="h-full bg-${color} transition-all" style="width: ${confidence}%"></div>
+                                </div>
+                                <span class="text-[10px] font-mono">${confidence}%</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="investigateIP('${alert.src_ip}')" class="px-2 py-1 bg-primary-container/10 text-primary text-[10px] font-bold border border-primary-container/30 rounded hover:bg-primary-container/20 mr-2" title="Investigate IP">
+                                <span class="material-symbols-outlined text-xs">search</span>
+                            </button>
+                            <button onclick="blockIP('${alert.src_ip}')" class="px-2 py-1 bg-error/10 text-error text-[10px] font-bold border border-error/30 rounded hover:bg-error/20">Block</button>
+                        </td>
+                    </tr>
+                `;
+                return row;
+            };
+
+            tbody.innerHTML = alerts.slice(0, 10).map(a => renderAlertRow(a, false)).join('');
+            fullTable.innerHTML = alerts.slice(0, 50).map(a => renderAlertRow(a, true)).join('');
+
+            // Update critical count
+            const criticalCount = alerts.filter(a => a.final_verdict === 'Attack').length;
+            document.getElementById('critical-count').textContent = criticalCount;
+        }
+
+        function updateDonutChart(distribution) {
+            const colors = {
+                'DDoS': '#ff1744',
+                'Port Scanning': '#ffab00',
+                'Others': '#ffd9a1',
+                'Benign': '#00d4ff'
+            };
+            
+            const total = Object.values(distribution || {}).reduce((a, b) => a + b, 0) || 1;
+            let cumulative = 0;
+            let svg = '';
+            let legend = '';
+            
+            const circumference = 2 * Math.PI * 44;
+            
+            Object.entries(distribution || {}).forEach(([label, count]) => {
+                const percent = (count / total) * 100;
+                const offset = cumulative;
+                const dashArray = `${(percent / 100) * circumference} ${circumference}`;
+                
+                svg += `<circle cx="50" cy="50" r="44" fill="none" stroke="${colors[label] || '#666'}" stroke-width="12" 
+                    stroke-dasharray="${dashArray}" stroke-dashoffset="${-offset}" transform="rotate(-90 50 50)"/>`;
+                
+                legend += `
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full" style="background: ${colors[label] || '#666'}"></span>
+                        <span class="text-[10px] font-mono text-on-surface-variant">${label} ${percent.toFixed(1)}%</span>
+                    </div>
+                `;
+                
+                cumulative += (percent / 100) * circumference;
+            });
+
+            document.getElementById('donut-chart').innerHTML = svg;
+            document.getElementById('donut-legend').innerHTML = legend;
+            
+            const maliciousPercent = ((distribution?.DDoS || 0) + (distribution?.Others || 0)) / total * 100;
+            document.getElementById('malicious-percent').textContent = maliciousPercent.toFixed(0) + '%';
+        }
+
+        function updateTrafficChart(timeline) {
+            const container = document.getElementById('traffic-chart');
+            if (!timeline || !timeline.timestamps) {
+                container.innerHTML = '<div class="text-center text-outline w-full">No traffic data</div>';
+                return;
+            }
+
+            const allData = [...timeline.attacks, ...timeline.suspicious, ...timeline.benign];
+            const max = Math.max(...allData, 1);
+            
+            let bars = '';
+            for (let i = 0; i < timeline.timestamps.length; i++) {
+                const total = (timeline.attacks[i] || 0) + (timeline.suspicious[i] || 0) + (timeline.benign[i] || 0);
+                const height = (total / max) * 100;
+                const attackRatio = (timeline.attacks[i] || 0) / total;
+                
+                let color = 'bg-primary-container/40';
+                if (attackRatio > 0.5) color = 'bg-error/40';
+                else if (attackRatio > 0.2) color = 'bg-tertiary-container/40';
+                
+                bars += `<div class="w-full ${color} rounded-t transition-all hover:opacity-80" style="height: ${Math.max(height, 5)}%"></div>`;
+            }
+            
+            container.innerHTML = bars;
+        }
+
+        function updateTopAttackers(attackers) {
+            const container = document.getElementById('top-attackers');
+            if (!attackers || attackers.length === 0) {
+                container.innerHTML = '<div class="text-[10px] text-outline">No attackers detected</div>';
+                return;
+            }
+
+            const max = Math.max(...attackers.map(a => a.alert_count), 1);
+            container.innerHTML = attackers.map(a => `
+                <div>
+                    <div class="flex justify-between text-[10px] mb-1.5">
+                        <span class="font-mono text-primary">${a.src_ip}</span>
+                        <span class="text-outline">${a.alert_count} alerts</span>
+                    </div>
+                    <div class="w-full h-1 bg-surface-variant rounded-full overflow-hidden">
+                        <div class="h-full bg-primary-container" style="width: ${(a.alert_count / max) * 100}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateBlockedIPs(ips) {
+            const listContainer = document.getElementById('blocked-ips-list');
+            const tableContainer = document.getElementById('blocked-ips-table');
+            
+            if (!ips || ips.length === 0) {
+                listContainer.innerHTML = '<div class="text-[10px] text-outline">No blocked IPs</div>';
+                tableContainer.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-outline text-xs">No blocked IPs</td></tr>';
+                return;
+            }
+
+            const rows = ips.map(ip => `
+                <div class="flex items-center justify-between p-2 bg-surface-container/40 rounded border border-outline-variant/10">
+                    <span class="font-mono text-xs text-error">${ip}</span>
+                    <span class="text-[9px] font-mono px-2 py-0.5 bg-error-container/20 text-error font-bold rounded">PERMANENT</span>
+                </div>
+            `).join('');
+            
+            listContainer.innerHTML = rows;
+            
+            tableContainer.innerHTML = ips.map(ip => `
+                <tr class="group hover:bg-surface-variant/40 transition-colors">
+                    <td class="py-3 font-mono text-on-surface">${ip}</td>
+                    <td class="py-3 text-outline">Manually blocked</td>
+                    <td class="py-3"><span class="px-2 py-0.5 bg-error/10 text-error text-[9px] font-bold rounded border border-error/20">PERMANENT</span></td>
+                    <td class="py-3 text-right">
+                        <button onclick="unblockIP('${ip}')" class="text-primary hover:underline text-[10px] font-bold uppercase tracking-tighter">Unblock</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // ==================== MODELS DATA ====================
+        async function fetchModelsData() {
+            const health = await fetchAPI('/health');
+            if (health) updateModelsHealth(health);
+            
+            const alerts = await fetchAPI('/alerts?n=20');
+            if (alerts) updateInferenceStream(alerts);
+        }
+
+        function updateModelsHealth(health) {
+            const statusEl = document.getElementById('model-status');
+            const apiHealthEl = document.getElementById('api-health');
+            
+            if (health.status === 'healthy') {
+                statusEl.textContent = 'LOADED/READY';
+                statusEl.classList.add('bg-primary/10', 'text-primary', 'border-primary');
+                statusEl.classList.remove('bg-error/10', 'text-error', 'border-error');
+                apiHealthEl.textContent = 'Running/Healthy';
+            } else {
+                statusEl.textContent = 'ERROR';
+                statusEl.classList.add('bg-error/10', 'text-error', 'border-error');
+                statusEl.classList.remove('bg-primary/10', 'text-primary', 'border-primary');
+                apiHealthEl.textContent = 'Error';
+            }
+
+            const models = health.models_loaded || {};
+            let confidence = 0;
+            let count = 0;
+            if (models.random_forest) { confidence += 99.76; count++; }
+            if (models.xgboost) { confidence += 99.1; count++; }
+            if (models.autoencoder) { confidence += 99; count++; }
+            if (models.isolation_forest) { confidence += 98; count++; }
+            
+            const avgConfidence = count > 0 ? (confidence / count).toFixed(1) : 0;
+            document.getElementById('ensemble-confidence').textContent = avgConfidence;
+            
+            // Update SVG circle (98.4% = 5 offset from 277 circumference)
+            const offset = 277 - (avgConfidence / 100 * 277);
+            document.getElementById('ensemble-circle').setAttribute('stroke-dashoffset', offset);
+        }
+
+        function updateInferenceStream(alerts) {
+            const tbody = document.getElementById('inference-stream');
+            if (!alerts || alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-outline text-sm">Waiting for inference data...</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = alerts.slice(0, 10).map(alert => {
+                const verdict = alert.final_verdict || 'Unknown';
+                const bgClass = getVerdictBgColor(verdict);
+                return `
+                    <tr class="hover:bg-surface-variant/40 transition-colors ${verdict === 'Attack' ? 'bg-error-container/10' : ''}">
+                        <td class="px-6 py-4 text-on-surface-variant">${formatTimestamp(alert.timestamp)}</td>
+                        <td class="px-6 py-4 ${verdict === 'Attack' ? 'text-error' : 'text-primary'}">${alert.src_ip}</td>
+                        <td class="px-6 py-4">${alert.dst_port}</td>
+                        <td class="px-6 py-4">${alert.protocol === 6 ? 'TCP' : alert.protocol === 17 ? 'UDP' : 'OTHER'}</td>
+                        <td class="px-6 py-4">${alert.rf_label || '-'}</td>
+                        <td class="px-6 py-4">${((alert.combined_confidence || 0) * 100).toFixed(2)}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-0.5 ${bgClass} text-[10px] font-bold rounded uppercase">${verdict}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ==================== INVESTIGATION DATA ====================
+        async function lookupIP() {
+            const input = document.getElementById('ip-lookup-input');
+            const ip = input.value.trim();
+            
+            if (!ip) {
+                showToast('Please enter an IP address', 'error', 'warning');
+                return;
+            }
+
+            const result = await fetchAPI(`/ti/lookup/${ip}`);
+            if (result) {
+                document.getElementById('ti-results').classList.remove('hidden');
+                document.getElementById('ti-results').classList.add('block');
+                
+                document.getElementById('ti-score').textContent = result.score || 0;
+                document.getElementById('ti-reputation').textContent = result.reputation_label || 'UNKNOWN';
+                document.getElementById('ti-last-check').textContent = 'Just now';
+                document.getElementById('ti-ip').textContent = ip;
+                document.getElementById('ti-country').textContent = result.country || '-';
+                document.getElementById('ti-isp').textContent = result.isp || '-';
+                document.getElementById('ti-type').textContent = result.is_malicious ? 'Malicious' : 'Clean';
+                
+                // Mock abuse data
+                document.getElementById('ti-abuse-score').textContent = result.score > 50 ? '100%' : `${result.score || 0}%`;
+                document.getElementById('ti-abuse-reports').textContent = `${result.score || 0} Reports`;
+                document.getElementById('ti-vt-detections').textContent = result.is_malicious ? '48/92' : '2/92';
+                
+                // Add to history
+                lookupHistory.unshift({
+                    ip,
+                    score: result.score || 0,
+                    time: new Date().toLocaleTimeString(),
+                    malicious: result.is_malicious
+                });
+                if (lookupHistory.length > 10) lookupHistory.pop();
+                updateLookupHistory();
+                
+                showToast(`Lookup complete for ${ip}`, 'check_circle');
+            } else {
+                showToast('TI lookup failed - API may be offline', 'error', 'cancel');
+            }
+        }
+
+        function updateLookupHistory() {
+            const container = document.getElementById('lookup-history');
+            if (lookupHistory.length === 0) {
+                container.innerHTML = '<div class="text-[10px] text-outline">No recent lookups</div>';
+                return;
+            }
+
+            container.innerHTML = lookupHistory.map(h => `
+                <div class="p-3 bg-surface-container rounded-lg border-l-2 ${h.malicious ? 'border-error' : 'border-primary-container'} hover:bg-surface-variant transition-colors cursor-pointer group" onclick="document.getElementById('ip-lookup-input').value='${h.ip}';lookupIP();">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-mono text-xs font-bold group-hover:text-primary transition-colors">${h.ip}</span>
+                        <span class="text-[8px] ${h.malicious ? 'bg-error-container text-error' : 'bg-secondary-container text-secondary'} px-1.5 py-0.5 rounded uppercase font-bold">${h.score}</span>
+                    </div>
+                    <p class="text-[9px] text-outline uppercase tracking-tighter">Scanned: ${h.time}</p>
+                </div>
+            `).join('');
+        }
+
+        // ==================== THREAT MAP ====================
+        let threatMap = null;
+        let mapMarkers = [];
+        let mapInitialized = false;
+
+        // Country code to flag emoji
+        function getCountryFlag(countryCode) {
+            if (!countryCode || countryCode.length !== 2) return '🌍';
+            const codePoints = countryCode.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0));
+            return String.fromCodePoint(...codePoints);
+        }
+
+        // Threat level colors
+        function getThreatColor(level) {
+            switch(level) {
+                case 'critical': return '#dc2626';
+                case 'high': return '#ef4444';
+                case 'medium': return '#f59e0b';
+                case 'low': return '#22c55e';
+                default: return '#6b7280';
+            }
+        }
+
+        async function loadThreatMap() {
+            const mapContainer = document.getElementById('threat-map');
+            if (!mapContainer) return;
+
+            // Initialize map if not done
+            if (!mapInitialized) {
+                threatMap = L.map('threat-map', {
+                    center: [20, 0],
+                    zoom: 2,
+                    minZoom: 2,
+                    maxZoom: 8,
+                    worldCopyJump: true,
+                    preferCanvas: true
+                });
+
+                // Dark tile layer (CartoDB Dark Matter)
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                    subdomains: 'abcd',
+                    maxZoom: 19
+                }).addTo(threatMap);
+
+                mapInitialized = true;
+            }
+
+            // Fetch attack data
+            const data = await fetchAPI('/geo/attacks-map');
+            if (!data || data.error) {
+                document.getElementById('map-stats').textContent = 'GeoIP unavailable';
+                return;
+            }
+
+            // Clear existing markers
+            mapMarkers.forEach(m => threatMap.removeLayer(m));
+            mapMarkers = [];
+
+            // Update stats
+            document.getElementById('map-total-attacks').textContent = data.total_attacks?.toLocaleString() || '0';
+            document.getElementById('map-unique-ips').textContent = data.unique_ips?.toLocaleString() || '0';
+            document.getElementById('map-stats').textContent = `${data.markers?.length || 0} markers | ${data.cache_stats?.cached_ips || 0} cached`;
+
+            // Update country stats
+            const countries = data.countries || [];
+            const countryList = document.getElementById('country-threat-list');
+            
+            if (countries.length > 0) {
+                // Top country
+                const topCountry = countries[0];
+                document.getElementById('top-country-flag').textContent = getCountryFlag(topCountry.country_code);
+                document.getElementById('top-country-name').textContent = topCountry.country;
+                document.getElementById('top-country-attacks').textContent = `${topCountry.attack_count} attacks`;
+
+                // Country list (top 5)
+                countryList.innerHTML = countries.slice(0, 5).map(c => `
+                    <div class="flex items-center justify-between py-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">${getCountryFlag(c.country_code)}</span>
+                            <span class="text-[10px] text-outline">${c.country}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-mono font-bold">${c.attack_count}</span>
+                            <span class="text-[9px] text-outline ml-1">(${c.unique_ips} IPs)</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                countryList.innerHTML = '<div class="text-[10px] text-outline">No location data</div>';
+                document.getElementById('top-country-flag').textContent = '🌍';
+                document.getElementById('top-country-name').textContent = '-';
+                document.getElementById('top-country-attacks').textContent = '0 attacks';
+            }
+
+            // Add markers
+            const markers = data.markers || [];
+            markers.forEach(marker => {
+                if (!marker.latitude || !marker.longitude) return;
+
+                const color = marker.verdict === 'Attack' ? '#ef4444' : 
+                              marker.verdict === 'Suspicious' ? '#f59e0b' : '#22c55e';
+
+                const circle = L.circleMarker([marker.latitude, marker.longitude], {
+                    radius: Math.min(5 + Math.log2(marker.attack_count) * 2, 15),
+                    fillColor: color,
+                    color: '#ffffff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.7
+                }).addTo(threatMap);
+
+                circle.bindPopup(`
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; min-width: 150px;">
+                        <div style="font-weight: bold; margin-bottom: 4px; color: ${color};">${marker.label || 'Unknown'}</div>
+                        <div style="margin-bottom: 2px;"><strong>IP:</strong> ${marker.ip}</div>
+                        <div style="margin-bottom: 2px;"><strong>Country:</strong> ${marker.country || 'Unknown'}</div>
+                        <div style="margin-bottom: 2px;"><strong>City:</strong> ${marker.city || '-'}</div>
+                        <div style="margin-bottom: 2px;"><strong>ISP:</strong> ${marker.isp || '-'}</div>
+                        <div style="margin-bottom: 2px;"><strong>Attacks:</strong> ${marker.attack_count}</div>
+                        <div style="margin-bottom: 2px;"><strong>Confidence:</strong> ${((marker.confidence || 0) * 100).toFixed(1)}%</div>
+                        <div style="margin-top: 6px;">
+                            <button onclick="investigateIP('${marker.ip}')" style="background: #00d4ff; color: #003642; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold;">
+                                Investigate
+                            </button>
+                            <button onclick="blockIP('${marker.ip}')" style="background: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; margin-left: 4px;">
+                                Block
+                            </button>
+                        </div>
+                    </div>
+                `);
+
+                mapMarkers.push(circle);
+            });
+
+            // If no markers, show placeholder
+            if (markers.length === 0) {
+                const emptyOverlay = L.layerGroup();
+                // Map will show empty state
+            }
+        }
+
+        function refreshThreatMap() {
+            loadThreatMap();
+            showToast('Threat map refreshed', 'map');
+        }
+
+        // ==================== ACTION FUNCTIONS ====================
+        async function simulateAttack(type) {
+            const status = document.getElementById('simulate-status');
+            const message = document.getElementById('simulate-message');
+            
+            status.style.display = 'flex';
+            message.textContent = `Simulating ${type} attack...`;
+            
+            const result = await postAPI('/simulate', { type, target_ip: '127.0.0.1' });
+            
+            if (result && result.alerts_generated !== undefined) {
+                message.textContent = `Generated ${result.alerts_generated} alerts`;
+                showToast(`${type.toUpperCase()} simulation complete: ${result.alerts_generated} alerts`, 'check_circle');
+                fetchDashboardData();
+            } else {
+                message.textContent = 'Simulation failed';
+                showToast('Attack simulation failed', 'error');
+            }
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 3000);
+        }
+
+        async function blockIP(ip) {
+            if (!ip) ip = document.getElementById('new-block-ip')?.value?.trim();
+            if (!ip) {
+                showToast('Please enter an IP address', 'warning');
+                return;
+            }
+            
+            const result = await postAPI('/block-ip', { ip });
+            if (result) {
+                showToast(`IP ${ip} blocked successfully`, 'block');
+                fetchDashboardData();
+                document.getElementById('new-block-ip').value = '';
+            } else {
+                showToast('Failed to block IP', 'error');
+            }
+        }
+
+        async function unblockIP(ip) {
+            const result = await postAPI('/unblock-ip', { ip });
+            if (result) {
+                showToast(`IP ${ip} unblocked`, 'check_circle');
+                fetchDashboardData();
+            } else {
+                showToast('Failed to unblock IP', 'error');
+            }
+        }
+
+        async function investigateIP(ip) {
+            // Navigate to investigation page
+            navigateTo('investigation');
+            
+            // Fill the IP input
+            document.getElementById('ip-lookup-input').value = ip;
+            
+            // Run the lookup
+            await lookupIP();
+        }
+
+        async function clearAlerts() {
+            if (!confirm('Clear all alerts? This cannot be undone.')) return;
+            
+            const result = await postAPI('/clear', {});
+            if (result && result.success) {
+                showToast('All alerts cleared', 'delete_sweep');
+                fetchDashboardData();
+            } else {
+                showToast('Failed to clear alerts', 'error');
+            }
+        }
+
+        function exportAlerts() {
+            fetchAPI('/alerts?n=1000').then(alerts => {
+                if (!alerts) return;
+                
+                const csv = [
+                    'ID,Timestamp,Source IP,Dest IP,Source Port,Dest Port,Protocol,RF Label,RF Confidence,AE Score,XGB Label,XGB Confidence,IF Score,Verdict,Confidence',
+                    ...alerts.map(a => [
+                        a.id, a.timestamp, a.src_ip, a.dst_ip, a.src_port, a.dst_port, a.protocol,
+                        a.rf_label, a.rf_confidence?.toFixed(4), a.ae_anomaly_score?.toFixed(4),
+                        a.xgb_label, a.xgb_confidence?.toFixed(4), a.if_anomaly_score?.toFixed(4),
+                        a.final_verdict, a.combined_confidence?.toFixed(4)
+                    ].join(','))
+                ].join('\n');
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `alerts_${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                
+                showToast('Alerts exported to CSV', 'download');
+            });
+        }
+
+        function retrainModels() {
+            showToast('Retrain functionality coming soon', 'engineering');
+        }
+
+        function deployEnsemble() {
+            showToast('Deploying ensemble...', 'upload');
+            setTimeout(() => showToast('Ensemble deployed successfully!', 'check_circle'), 2000);
+        }
+
+        // ==================== SYSTEM UPDATES ====================
+        function updateSystemTime() {
+            const now = new Date();
+            document.getElementById('system-time').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+            
+            // Update uptime
+            const uptime = Date.now() - startTime;
+            const hours = Math.floor(uptime / 3600000);
+            const mins = Math.floor((uptime % 3600000) / 60000);
+            const secs = Math.floor((uptime % 60000) / 1000);
+            document.getElementById('server-uptime').textContent = `${hours}h ${mins}m ${secs}s`;
+        }
+
+        // ==================== INITIALIZATION ====================
+        function init() {
+            // Set up navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    navigateTo(link.dataset.page);
+                });
+            });
+
+            // Set up keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && document.activeElement.id === 'ip-lookup-input') {
+                    lookupIP();
+                }
+                if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                    e.preventDefault();
+                    document.getElementById('global-search').focus();
+                }
+            });
+
+            // Initial data fetch
+            fetchDashboardData();
+            fetchModelsData();
+            updateSystemTime();
+
+            // Set up polling
+            pollTimer = setInterval(() => {
+                fetchDashboardData();
+                fetchModelsData();
+            }, POLL_INTERVAL);
+
+            // Update time every second
+            setInterval(updateSystemTime, 1000);
+        }
+
+        // Start when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

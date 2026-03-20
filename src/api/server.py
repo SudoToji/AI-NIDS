@@ -28,6 +28,20 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from tensorflow import keras
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    # Find project root: server.py → api/ → src/ → Project/
+    _server_dir = os.path.dirname(os.path.abspath(__file__))  # src/api/
+    _src_dir = os.path.dirname(_server_dir)                    # src/
+    _project_root = os.path.dirname(_src_dir)                  # Project/
+    _env_path = os.path.join(_project_root, ".env")
+    load_dotenv(_env_path)
+except ImportError:
+    pass  # python-dotenv not installed, use system env vars
+except Exception as e:
+    print(f"Warning: Could not load .env file: {e}")
+
 from src.features.extractor import FEATURE_COLUMNS
 
 # ============================================================================
@@ -78,16 +92,39 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # Thread lock for AlertStore thread safety
 _alert_store_lock = threading.Lock()
 
+def _get_frontend_path(filename: str) -> str:
+    """Get path to frontend file, checking build directory first."""
+    build_path = os.path.join(PROJECT_ROOT, 'web', 'dist', filename)
+    web_path = os.path.join(PROJECT_ROOT, 'web', filename)
+    
+    if os.path.exists(build_path):
+        return build_path
+    elif os.path.exists(web_path):
+        return web_path
+    return web_path
+
 @app.route('/')
 def index():
-    html_path = os.path.join(PROJECT_ROOT, 'dashboard.html')
-    if os.path.exists(html_path):
-        with open(html_path, 'r', encoding='utf-8') as f:
+    # Serve the main index.html from web/ directory
+    index_path = os.path.join(PROJECT_ROOT, 'web', 'index.html')
+    
+    if os.path.exists(index_path):
+        with open(index_path, 'r', encoding='utf-8') as f:
             return f.read(), 200, {'Content-Type': 'text/html'}
-    return "dashboard.html not found", 404
+    return "Frontend not found. Please ensure web/index.html exists.", 404
+
+@app.route('/favicon.svg')
+def favicon():
+    favicon_path = os.path.join(PROJECT_ROOT, 'web', 'public', 'favicon.svg')
+    if os.path.exists(favicon_path):
+        with open(favicon_path, 'r', encoding='utf-8') as f:
+            return f.read(), 200, {'Content-Type': 'image/svg+xml'}
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="%230a0f1a"/><text x="16" y="23" font-size="20" text-anchor="middle" fill="%2300d4ff">🛡</text></svg>'
+    return svg, 200, {'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-cache'}
 
 @app.route('/dashboard')
 def dashboard():
+    """Redirect to main index page."""
     return index()
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -101,13 +138,18 @@ rf_metadata = None
 scaler = None
 autoencoder = None
 ae_threshold = None
+xgb_model = None
+xgb_metadata = None
+if_model = None
+if_metadata = None
 
 ATTACK_TYPES = ["Bots", "Brute Force", "DDoS", "DoS", "Normal Traffic", "Port Scanning", "Web Attacks"]
 
 
 def load_models():
-    """Load all ML models."""
+    """Load all ML models (RF, AE, XGBoost, Isolation Forest)."""
     global rf_model, rf_metadata, scaler, autoencoder, ae_threshold
+    global xgb_model, xgb_metadata, if_model, if_metadata
     
     try:
         # Load Random Forest
@@ -153,6 +195,44 @@ def load_models():
     except Exception as e:
         logger.warning(f"[WARN] Failed to load AE threshold: {e}")
         ae_threshold = DEFAULT_AE_THRESHOLD
+    
+    # Load XGBoost
+    try:
+        from xgboost import XGBClassifier
+        xgb_path = os.path.join(PROJECT_ROOT, "models", "xgb_model.json")
+        xgb_model = XGBClassifier()
+        xgb_model.load_model(xgb_path)
+        logger.info(f"[OK] Loaded XGBoost from {xgb_path}")
+    except Exception as e:
+        logger.warning(f"[WARN] Failed to load XGBoost: {e}")
+        xgb_model = None
+    
+    try:
+        # Load XGB metadata
+        xgb_meta_path = os.path.join(PROJECT_ROOT, "models", "xgb_metadata.pkl")
+        xgb_metadata = joblib.load(xgb_meta_path)
+        logger.info(f"[OK] Loaded XGB metadata from {xgb_meta_path}")
+    except Exception as e:
+        logger.warning(f"[WARN] Failed to load XGB metadata: {e}")
+        xgb_metadata = {"class_labels": ATTACK_TYPES}
+    
+    # Load Isolation Forest
+    try:
+        if_path = os.path.join(PROJECT_ROOT, "models", "if_model.pkl")
+        if_model = joblib.load(if_path)
+        logger.info(f"[OK] Loaded Isolation Forest from {if_path}")
+    except Exception as e:
+        logger.warning(f"[WARN] Failed to load Isolation Forest: {e}")
+        if_model = None
+    
+    try:
+        # Load IF metadata
+        if_meta_path = os.path.join(PROJECT_ROOT, "models", "if_metadata.pkl")
+        if_metadata = joblib.load(if_meta_path)
+        logger.info(f"[OK] Loaded IF metadata from {if_meta_path}")
+    except Exception as e:
+        logger.warning(f"[WARN] Failed to load IF metadata: {e}")
+        if_metadata = {"contamination": 0.1}
 
 
 # ============================================================================
@@ -161,7 +241,7 @@ def load_models():
 
 @dataclass
 class Alert:
-    """Represents a network intrusion alert."""
+    """Represents a network intrusion alert with multi-model predictions."""
     id: int
     timestamp: str
     src_ip: str
@@ -173,11 +253,37 @@ class Alert:
     rf_confidence: float
     ae_anomaly_score: float
     ae_is_anomaly: bool
+    xgb_label: str
+    xgb_confidence: float
+    if_is_anomaly: bool
+    if_anomaly_score: float
     final_verdict: str
     combined_confidence: float
     
-    def to_dict(self):
-        return asdict(self)
+    def to_dict(self) -> dict:
+        """Convert alert to JSON-serializable dict.
+        
+        Converts NumPy types to native Python types for Flask JSON serialization.
+        """
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp,
+            "src_ip": self.src_ip,
+            "dst_ip": self.dst_ip,
+            "src_port": int(self.src_port),
+            "dst_port": int(self.dst_port),
+            "protocol": int(self.protocol),
+            "rf_label": str(self.rf_label),
+            "rf_confidence": float(self.rf_confidence),
+            "ae_anomaly_score": float(self.ae_anomaly_score),
+            "ae_is_anomaly": bool(self.ae_is_anomaly),
+            "xgb_label": str(self.xgb_label),
+            "xgb_confidence": float(self.xgb_confidence),
+            "if_is_anomaly": bool(self.if_is_anomaly),
+            "if_anomaly_score": float(self.if_anomaly_score),
+            "final_verdict": str(self.final_verdict),
+            "combined_confidence": float(self.combined_confidence),
+        }
 
 
 class AlertStore:
@@ -430,34 +536,45 @@ def extract_features(packet_data: Dict) -> np.ndarray:
 # ML PREDICTION
 # ============================================================================
 
+def _get_scaled_features(features: np.ndarray) -> np.ndarray:
+    """Get scaled features using the shared scaler."""
+    if scaler is not None:
+        features_df = pd.DataFrame(features, columns=FEATURE_COLUMNS)
+        return scaler.transform(features_df)
+    return features
+
+
 def predict_hybrid(features: np.ndarray) -> Dict:
-    """Run hybrid prediction using Random Forest + Autoencoder."""
+    """Run hybrid prediction using RF + AE + XGBoost + Isolation Forest.
     
+    Ensemble voting logic:
+    - RF and XGB classify into attack types
+    - AE and IF detect anomalies (zero-day attacks)
+    - Final verdict combines all signals
+    """
+    # Default values
     verdict = "Benign"
     rf_label = "Normal Traffic"
     rf_confidence = 0.99
     ae_anomaly_score = 0.0
     ae_is_anomaly = False
+    xgb_label = "Normal Traffic"
+    xgb_confidence = 0.99
+    if_is_anomaly = False
+    if_anomaly_score = 0.0
     combined_confidence = 0.99
+    
+    # Get scaled features once (used by all models)
+    features_scaled = _get_scaled_features(features)
     
     # Random Forest prediction
     if rf_model is not None:
         try:
-            # Get class labels from metadata
             class_labels = rf_metadata.get("class_labels", ATTACK_TYPES) if rf_metadata else ATTACK_TYPES
             
-            # Scale features for RF (RF was trained on scaled features!)
-            if scaler is not None:
-                features_df = pd.DataFrame(features, columns=FEATURE_COLUMNS)
-                features_scaled = scaler.transform(features_df)
-            else:
-                features_scaled = features
-            
-            # Predict
             rf_pred = rf_model.predict(features_scaled)[0]
             rf_proba = rf_model.predict_proba(features_scaled)[0]
             
-            # Map numeric prediction to class label
             if hasattr(rf_model, "classes_") and len(rf_model.classes_) > 0:
                 pred_idx = int(rf_pred)
                 if pred_idx < len(class_labels):
@@ -468,32 +585,53 @@ def predict_hybrid(features: np.ndarray) -> Dict:
                 rf_label = str(rf_pred)
             
             rf_confidence = float(max(rf_proba))
-            
-            # Determine verdict based on RF prediction
-            if rf_label in ["Normal Traffic", "Benign"]:
-                verdict = "Benign"
-            else:
-                verdict = "Attack"
                 
         except Exception as e:
             logger.error(f"RF prediction error: {e}")
-            import traceback
-            traceback.print_exc()
+    
+    # XGBoost prediction
+    if xgb_model is not None:
+        try:
+            class_labels = xgb_metadata.get("class_labels", ATTACK_TYPES) if xgb_metadata else ATTACK_TYPES
+            
+            xgb_pred = xgb_model.predict(features_scaled)[0]
+            xgb_proba = xgb_model.predict_proba(features_scaled)[0]
+            
+            if hasattr(xgb_model, "classes_") and len(xgb_model.classes_) > 0:
+                pred_idx = int(xgb_pred)
+                if pred_idx < len(class_labels):
+                    xgb_label = class_labels[pred_idx]
+                else:
+                    xgb_label = str(xgb_pred)
+            else:
+                xgb_label = str(xgb_pred)
+            
+            xgb_confidence = float(max(xgb_proba))
+                
+        except Exception as e:
+            logger.error(f"XGB prediction error: {e}")
+    
+    # Isolation Forest anomaly detection
+    if if_model is not None:
+        try:
+            # decision_function: higher = normal, lower = anomaly
+            scores = if_model.decision_function(features_scaled)[0]
+            prediction = if_model.predict(features_scaled)[0]  # -1 = anomaly, 1 = normal
+            if_is_anomaly = prediction == -1
+            
+            # Normalize score to 0-1 range (higher = more anomalous)
+            # Typical range is roughly [-0.5, 0.5]
+            if_anomaly_score = max(0.0, min(1.0, 0.5 - scores))
+                
+        except Exception as e:
+            logger.error(f"IF prediction error: {e}")
     
     # Autoencoder anomaly detection
     if autoencoder is not None and ae_threshold is not None:
         try:
-            # Scale features if scaler available
-            if scaler is not None:
-                features_df = pd.DataFrame(features, columns=FEATURE_COLUMNS)
-                features_scaled = scaler.transform(features_df)
-            else:
-                features_scaled = features
-            
             reconstruction = autoencoder.predict(features_scaled, verbose=0)
             mse = float(np.mean(np.square(features_scaled - reconstruction)))
             
-            # Handle threshold - handle both array and scalar
             try:
                 if ae_threshold.shape == ():  # 0-dimensional array
                     threshold = float(ae_threshold)
@@ -504,27 +642,64 @@ def predict_hybrid(features: np.ndarray) -> Dict:
             
             ae_anomaly_score = mse
             ae_is_anomaly = bool(mse > threshold)
-            
-            # Fusion logic - only flag suspicious if RF is NOT confident in benign
-            # and AE detects anomaly (possible zero-day attack)
-            if verdict == "Benign" and ae_is_anomaly and rf_confidence < 0.8:
-                # RF says benign but not confident, AND AE sees anomaly → Suspicious
-                verdict = "Suspicious"
-                combined_confidence = min(rf_confidence, 0.6)
-            elif verdict == "Attack":
-                combined_confidence = max(rf_confidence, 0.8)
-            else:
-                # RF says Benign with high confidence, trust it
-                combined_confidence = rf_confidence
                 
         except Exception as e:
             logger.error(f"AE prediction error: {e}")
+    
+    # Ensemble voting logic
+    attack_labels = {"DDoS", "DoS", "Port Scanning", "Brute Force", "Web Attacks", "Bots"}
+    benign_labels = {"Normal Traffic", "Normal", "Benign"}
+    
+    # Count votes for attack vs benign
+    attack_votes = 0
+    benign_votes = 0
+    
+    if rf_label not in benign_labels:
+        attack_votes += 1
+    else:
+        benign_votes += 1
+        
+    if xgb_label not in benign_labels:
+        attack_votes += 1
+    else:
+        benign_votes += 1
+    
+    # AE anomaly detection (weights as half vote)
+    if ae_is_anomaly:
+        if rf_confidence < 0.8 or xgb_confidence < 0.8:
+            attack_votes += 0.5
+    
+    # IF anomaly detection (weights as half vote)
+    if if_is_anomaly:
+        if if_anomaly_score > 0.5:
+            if rf_confidence < 0.85 or xgb_confidence < 0.85:
+                attack_votes += 0.5
+    
+    # Determine final verdict
+    if attack_votes >= 2:
+        verdict = "Attack"
+        combined_confidence = max(rf_confidence, xgb_confidence)
+    elif attack_votes >= 1:
+        # Models disagree, check anomaly detectors
+        if ae_is_anomaly or (if_is_anomaly and if_anomaly_score > 0.6):
+            verdict = "Suspicious"
+            combined_confidence = min(rf_confidence, xgb_confidence, 0.7)
+        else:
+            verdict = "Benign"
+            combined_confidence = (rf_confidence + xgb_confidence) / 2
+    else:
+        verdict = "Benign"
+        combined_confidence = (rf_confidence + xgb_confidence) / 2
     
     return {
         "rf_label": rf_label,
         "rf_confidence": rf_confidence,
         "ae_anomaly_score": ae_anomaly_score,
         "ae_is_anomaly": ae_is_anomaly,
+        "xgb_label": xgb_label,
+        "xgb_confidence": xgb_confidence,
+        "if_is_anomaly": if_is_anomaly,
+        "if_anomaly_score": if_anomaly_score,
         "final_verdict": verdict,
         "combined_confidence": combined_confidence
     }
@@ -568,6 +743,10 @@ def process_packet(packet_data: Dict) -> Alert:
         rf_confidence=prediction["rf_confidence"],
         ae_anomaly_score=prediction["ae_anomaly_score"],
         ae_is_anomaly=prediction["ae_is_anomaly"],
+        xgb_label=prediction["xgb_label"],
+        xgb_confidence=prediction["xgb_confidence"],
+        if_is_anomaly=prediction["if_is_anomaly"],
+        if_anomaly_score=prediction["if_anomaly_score"],
         final_verdict=prediction["final_verdict"],
         combined_confidence=prediction["combined_confidence"]
     )
@@ -841,7 +1020,9 @@ def health_check():
         "models_loaded": {
             "random_forest": rf_model is not None,
             "autoencoder": autoencoder is not None,
-            "scaler": scaler is not None
+            "scaler": scaler is not None,
+            "xgboost": xgb_model is not None,
+            "isolation_forest": if_model is not None,
         },
         "timestamp": datetime.now(UTC).isoformat()
     })
@@ -969,17 +1150,35 @@ def simulate():
     attack_type = data.get("type", "normal")
     target_ip = data.get("target_ip", "127.0.0.1")
     
-    # Validate attack_type
-    valid_types = ["normal", "ddos", "synflood", "portscan", "slowloris", "bruteforce", "webattacks"]
-    if attack_type not in valid_types:
-        return jsonify({
-            "error": f"Invalid attack type. Must be one of: {', '.join(valid_types)}"
-        }), 400
-    
     # Validate target_ip format (basic check)
     if not target_ip or not isinstance(target_ip, str):
         return jsonify({"error": "Valid target_ip required"}), 400
-    target_ip = data.get("target_ip", "127.0.0.1")
+    
+    # Handle "all" attack types
+    valid_types = ["normal", "ddos", "synflood", "portscan", "slowloris", "bruteforce", "webattacks"]
+    if attack_type == "all":
+        # Run multiple attack simulations
+        all_alerts = []
+        attack_types_to_run = ["ddos", "synflood", "portscan", "bruteforce"]
+        for atype in attack_types_to_run:
+            alerts = simulate_attack(atype, target_ip)
+            all_alerts.extend(alerts)
+        # Add some normal traffic
+        normal_alerts = generate_normal_traffic(target_ip)
+        all_alerts.extend(normal_alerts[:5])  # Add 5 normal samples
+        return jsonify({
+            "type": "all",
+            "target_ip": target_ip,
+            "alerts_generated": len(all_alerts),
+            "attacks_run": attack_types_to_run,
+            "alerts": [a.to_dict() for a in all_alerts]
+        })
+    
+    # Validate attack_type
+    if attack_type not in valid_types:
+        return jsonify({
+            "error": f"Invalid attack type. Must be one of: {', '.join(valid_types + ['all'])}"
+        }), 400
     
     if attack_type == "normal":
         alerts = generate_normal_traffic(target_ip)
@@ -999,6 +1198,345 @@ def clear_alerts():
     """Clear all alerts."""
     alert_store.clear()
     return jsonify({"success": True})
+
+
+# ============================================================================
+# THREAT INTELLIGENCE ENDPOINTS
+# ============================================================================
+
+# TI Client singleton (lazy initialization)
+_ti_client = None
+
+def get_ti_client():
+    """Get or create TI client singleton with API keys from environment."""
+    global _ti_client
+    if _ti_client is None:
+        try:
+            from src.integration.ti_client import ThreatIntelClient
+            
+            # Load API keys from environment variables
+            vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
+            abuseipdb_api_key = os.getenv("ABUSEIPDB_API_KEY")
+            
+            # Initialize with API keys
+            _ti_client = ThreatIntelClient(
+                vt_api_key=vt_api_key,
+                abuseipdb_api_key=abuseipdb_api_key,
+            )
+            
+            # Log which APIs are enabled
+            if vt_api_key:
+                logger.info("ThreatIntelClient initialized with VirusTotal API")
+            else:
+                logger.info("ThreatIntelClient initialized (VirusTotal: DISABLED)")
+            
+            if abuseipdb_api_key:
+                logger.info("ThreatIntelClient initialized with AbuseIPDB API")
+            else:
+                logger.info("ThreatIntelClient initialized (AbuseIPDB: DISABLED)")
+                
+        except ImportError as e:
+            logger.warning(f"ThreatIntelClient not available: {e}")
+            _ti_client = None
+    return _ti_client
+
+
+@app.route("/api/ti/test", methods=["GET"])
+def test_ti():
+    """Test endpoint for TI lookup debugging."""
+    return jsonify({
+        "status": "ok",
+        "message": "TI endpoint is working",
+        "client_initialized": get_ti_client() is not None
+    })
+
+
+@app.route("/api/ti/lookup/<ip>", methods=["GET"])
+def lookup_threat_intel(ip: str):
+    """Lookup threat intelligence for an IP address.
+    
+    Args:
+        ip: IP address to lookup
+        
+    Returns:
+        JSON with TI data including score, reputation, and source details
+    """
+    import hashlib
+    import re
+    
+    # Validate IP format
+    ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+    if not re.match(ip_pattern, ip):
+        return jsonify({"error": "Invalid IP address format"}), 400
+    
+    # Check for private/internal IPs
+    octets = [int(x) for x in ip.split('.')]
+    is_private = (
+        octets[0] == 10 or
+        (octets[0] == 172 and 16 <= octets[1] <= 31) or
+        (octets[0] == 192 and octets[1] == 168) or
+        octets[0] == 127
+    )
+    
+    if is_private:
+        return jsonify({
+            "ip": ip,
+            "score": 0,
+            "reputation_label": "Internal",
+            "is_malicious": False,
+            "sources": {},
+            "message": "Private/internal IP address - no external TI available"
+        })
+    
+    # Try to use the TI client
+    ti_client = get_ti_client()
+    
+    if ti_client is not None:
+        try:
+            result = ti_client.lookup_ip(ip)
+            # Build sources object matching frontend expectations
+            sources = {}
+            for source in result.sources:
+                source_lower = source.lower()
+                if source_lower == "virustotal":
+                    sources["virustotal"] = {"detected": True, "score": result.threat_score}
+                elif source_lower == "abuseipdb":
+                    sources["abuseipdb"] = {"detected": True, "reports": 1 if result.threat_score > 20 else 0}
+                elif source_lower == "otx":
+                    sources["otx"] = {"detected": True, "pulses": 1 if result.threat_score > 30 else 0}
+            
+            return jsonify({
+                "ip": ip,
+                "score": result.threat_score,
+                "reputation_label": result.reputation.capitalize(),
+                "is_malicious": result.is_malicious,
+                "sources": sources,
+                "country": result.country,
+                "asn": result.asn,
+                "cached": result.cached
+            })
+        except Exception as e:
+            logger.error(f"TI lookup error for {ip}: {e}")
+            # Fall through to mock data
+    
+    # Mock TI data for demo purposes when TI client unavailable
+    # Generate consistent scores based on IP for demo
+    hash_val = int(hashlib.md5(ip.encode()).hexdigest()[:8], 16)
+    mock_score = hash_val % 100
+    
+    if mock_score < 30:
+        reputation = "Clean"
+        is_malicious = False
+    elif mock_score < 70:
+        reputation = "Suspicious"
+        is_malicious = False
+    else:
+        reputation = "Malicious"
+        is_malicious = True
+    
+    # Generate mock source data
+    sources = {}
+    if hash_val % 3 == 0:
+        sources["virustotal"] = {
+            "malicious": hash_val % 10 if is_malicious else 0,
+            "total": 90
+        }
+    if hash_val % 2 == 0:
+        sources["abuseipdb"] = {
+            "reports": (hash_val % 50) if mock_score > 30 else 0,
+            "confidence": mock_score
+        }
+    if hash_val % 5 == 0:
+        sources["otx"] = {
+            "pulses": (hash_val % 20) if mock_score > 50 else 0
+        }
+    
+    return jsonify({
+        "ip": ip,
+        "score": mock_score,
+        "reputation_label": reputation,
+        "is_malicious": is_malicious,
+        "sources": sources,
+        "mock": True  # Indicate this is mock data
+    })
+
+
+# ============================================================================
+# GEOIP ENDPOINTS
+# ============================================================================
+
+# Lazy-loaded GeoIP service
+_geoip_service = None
+
+
+def get_geoip_service():
+    """Get or create GeoIP service singleton."""
+    global _geoip_service
+    if _geoip_service is None:
+        try:
+            from src.utils.geoip import GeoIPService
+            _geoip_service = GeoIPService()
+            logger.info("GeoIPService initialized")
+        except ImportError as e:
+            logger.warning(f"GeoIPService not available: {e}")
+            _geoip_service = None
+    return _geoip_service
+
+
+@app.route("/api/geo/lookup/<ip>", methods=["GET"])
+def lookup_geoip(ip: str):
+    """Look up geographic location for an IP address.
+    
+    Args:
+        ip: IP address to look up
+        
+    Returns:
+        JSON with geolocation data
+    """
+    import re
+    
+    # Validate IP format
+    ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+    if not re.match(ip_pattern, ip):
+        return jsonify({"error": "Invalid IP address format"}), 400
+    
+    geoip = get_geoip_service()
+    
+    if geoip is None:
+        return jsonify({"error": "GeoIP service not available"}), 503
+    
+    try:
+        location = geoip.lookup(ip)
+        
+        if location is None:
+            return jsonify({
+                "ip": ip,
+                "error": "Location lookup failed",
+                "cached": False
+            }), 200  # Return 200 with error flag
+        
+        return jsonify(location.to_dict())
+        
+    except Exception as e:
+        logger.error(f"GeoIP lookup error for {ip}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/geo/attacks-map", methods=["GET"])
+def get_attacks_map():
+    """Get attack sources with geographic locations for map visualization.
+    
+    Returns top attacking IPs with their geolocation data.
+    
+    Query Parameters:
+        n: Number of top attackers to include (default: 20)
+        include_all: Include all alerts instead of just top attackers (default: false)
+    """
+    geoip = get_geoip_service()
+    
+    if geoip is None:
+        return jsonify({"error": "GeoIP service not available"}), 503
+    
+    try:
+        n = request.args.get("n", 20, type=int)
+        include_all = request.args.get("include_all", "false").lower() == "true"
+        
+        # Get alerts
+        if include_all:
+            alerts = alert_store.get_all()
+        else:
+            # Get top attackers
+            top_attackers = alert_store.get_top_attackers(n * 2)  # Get more to merge duplicates
+            alerts = []
+            
+            # Find alerts for top attackers
+            all_alerts = alert_store.get_all()
+            attacker_ips = {a["src_ip"] for a in top_attackers}
+            
+            for alert in all_alerts:
+                if alert.src_ip in attacker_ips:
+                    alerts.append(alert)
+        
+        # Get unique IPs and their counts
+        ip_counts = {}
+        ip_data = {}
+        
+        for alert in alerts:
+            src_ip = alert.src_ip
+            if src_ip not in ip_counts:
+                ip_counts[src_ip] = 0
+            ip_data[src_ip] = alert
+            ip_counts[src_ip] += 1
+        
+        # Sort by count and take top N
+        sorted_ips = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:n]
+        
+        # Batch lookup geolocations
+        ips_to_lookup = [ip for ip, _ in sorted_ips]
+        locations = geoip.lookup_batch(ips_to_lookup)
+        
+        # Build response
+        markers = []
+        country_stats = {}
+        
+        for ip, count in sorted_ips:
+            loc = locations.get(ip)
+            alert = ip_data[ip]
+            
+            marker = {
+                "ip": ip,
+                "attack_count": count,
+                "label": alert.rf_label,
+                "verdict": alert.final_verdict,
+                "confidence": float(alert.combined_confidence),
+                "timestamp": alert.timestamp
+            }
+            
+            if loc and not loc.is_private:
+                marker["latitude"] = loc.latitude
+                marker["longitude"] = loc.longitude
+                marker["country"] = loc.country
+                marker["country_code"] = loc.country_code
+                marker["city"] = loc.city
+                marker["isp"] = loc.isp
+                marker["threat_level"] = loc.threat_level
+                
+                # Country stats
+                if loc.country not in country_stats:
+                    country_stats[loc.country] = {
+                        "country": loc.country,
+                        "country_code": loc.country_code,
+                        "attack_count": 0,
+                        "unique_ips": 0
+                    }
+                country_stats[loc.country]["attack_count"] += count
+                country_stats[loc.country]["unique_ips"] += 1
+            else:
+                marker["latitude"] = None
+                marker["longitude"] = None
+                marker["country"] = "Unknown"
+                marker["country_code"] = "XX"
+            
+            markers.append(marker)
+        
+        # Sort country stats by attack count
+        sorted_countries = sorted(
+            country_stats.values(),
+            key=lambda x: x["attack_count"],
+            reverse=True
+        )
+        
+        return jsonify({
+            "markers": markers,
+            "countries": sorted_countries,
+            "total_attacks": sum(ip_counts.values()),
+            "unique_ips": len(ip_counts),
+            "cache_stats": geoip.get_cache_stats()
+        })
+        
+    except Exception as e:
+        logger.error(f"Attacks map error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================================
@@ -1037,19 +1575,10 @@ if __name__ == "__main__":
                         # Extract features
                         features_df = extract_live_features(flow_data)
                         features_scaled = scaler.transform(features_df)
+                        features_np = features_df.values.astype(np.float32)
                         
-                        # Predict using already loaded global models
-                        pred = rf_model.predict(features_scaled)[0]
-                        rf_label = rf_metadata["class_labels"][int(pred)]
-                        proba = rf_model.predict_proba(features_scaled)[0]
-                        
-                        # Determine verdict
-                        if rf_label in ["Normal Traffic", "Benign"]:
-                            verdict = "Benign"
-                            confidence = float(max(proba))
-                        else:
-                            verdict = "Attack"
-                            confidence = float(max(proba))
+                        # Predict using predict_hybrid for full ensemble
+                        prediction = predict_hybrid(features_np)
                         
                         # Create alert
                         with _alert_store_lock:
@@ -1061,17 +1590,21 @@ if __name__ == "__main__":
                                 src_port=flow_data.get("src_port", 0),
                                 dst_port=flow_data.get("dst_port", 0),
                                 protocol=flow_data.get("protocol", 6),
-                                rf_label=rf_label,
-                                rf_confidence=confidence,
-                                ae_anomaly_score=0.0,
-                                ae_is_anomaly=False,
-                                final_verdict=verdict,
-                                combined_confidence=confidence
+                                rf_label=prediction["rf_label"],
+                                rf_confidence=prediction["rf_confidence"],
+                                ae_anomaly_score=prediction["ae_anomaly_score"],
+                                ae_is_anomaly=prediction["ae_is_anomaly"],
+                                xgb_label=prediction["xgb_label"],
+                                xgb_confidence=prediction["xgb_confidence"],
+                                if_is_anomaly=prediction["if_is_anomaly"],
+                                if_anomaly_score=prediction["if_anomaly_score"],
+                                final_verdict=prediction["final_verdict"],
+                                combined_confidence=prediction["combined_confidence"]
                             )
                             alert_store.next_id += 1
                             alert_store.add_alert(alert)
                         
-                        logger.info(f"Live alert: {rf_label} - {verdict}")
+                        logger.info(f"Live alert: {prediction['final_verdict']} - RF:{prediction['rf_label']} XGB:{prediction['xgb_label']}")
                         
                     except Exception as e:
                         logger.error(f"Live capture error: {e}")
