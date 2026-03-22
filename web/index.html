@@ -4,306 +4,1191 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>AI-NIDS | Neural Sentinel</title>
+    <meta name="description" content="Advanced Neural Intrusion Detection System - Real-time threat monitoring and AI-powered security"/>
+    <meta property="og:title" content="AI-NIDS | Neural Sentinel"/>
+    <meta property="og:description" content="Advanced Neural Intrusion Detection System"/>
+    <meta property="og:type" content="website"/>
+    
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- Premium Fonts: Geist + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+    
+    <!-- Phosphor Icons (Ultra Light) -->
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+    
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Custom SVG Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23050508'/%3E%3Cpath d='M16 6 L22 12 L22 20 L16 26 L10 20 L10 12 Z' fill='none' stroke='%2300d4ff' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%2300d4ff'/%3E%3C/svg%3E"/>
     <script>
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "surface": "#0e131e",
-                        "surface-dim": "#0e131e",
-                        "primary": "#a8e8ff",
-                        "primary-container": "#00d4ff",
-                        "secondary": "#9bcee1",
-                        "secondary-container": "#174f5f",
-                        "tertiary": "#ffd9a1",
-                        "tertiary-container": "#feb528",
-                        "surface-container-low": "#171b27",
-                        "surface-container": "#1b202b",
-                        "surface-container-high": "#252a36",
-                        "surface-container-highest": "#303541",
-                        "on-surface": "#dee2f2",
-                        "on-primary": "#003642",
-                        "outline-variant": "#3c494e",
-                        "error": "#ffb4ab",
-                        "error-container": "#93000a"
+                        "void": "#050508",
+                        "abyss": "#08080c",
+                        "surface": "#0c0c10",
+                        "surface-elevated": "#12121a",
+                        "surface-card": "#16161f",
+                        "primary": "#00d4ff",
+                        "primary-muted": "#00a8cc",
+                        "secondary": "#00ff88",
+                        "accent-warm": "#ff6b35",
+                        "accent-amber": "#ffc107",
+                        "error": "#ff4757",
+                        "text-primary": "#ffffff",
+                        "text-secondary": "#8a8a9a",
+                        "text-muted": "#5a5a6a",
+                        "border-subtle": "rgba(255, 255, 255, 0.06)",
+                        "border-accent": "rgba(0, 212, 255, 0.2)"
                     },
                     fontFamily: {
-                        "headline": ["Space Grotesk"],
-                        "body": ["Inter"],
-                        "mono": ["JetBrains Mono"]
+                        "sans": ["Geist", "system-ui", "sans-serif"],
+                        "mono": ["Geist Mono", "JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "4xl": "2rem",
+                        "5xl": "2.5rem"
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.32, 0.72, 0, 1) forwards',
+                        'fade-in': 'fadeIn 0.6s ease-out forwards',
+                        'scale-in': 'scaleIn 0.5s cubic-bezier(0.32, 0.72, 0, 1) forwards',
+                        'slide-in-right': 'slideInRight 0.6s cubic-bezier(0.32, 0.72, 0, 1) forwards',
+                        'blur-in': 'blurIn 0.8s cubic-bezier(0.32, 0.72, 0, 1) forwards',
+                        'glow-pulse': 'glowPulse 2s ease-in-out infinite',
+                        'float': 'float 6s ease-in-out infinite'
+                    },
+                    backdropBlur: {
+                        'xs': '2px'
                     }
                 }
             }
         }
     </script>
     <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        /* ==================== AWWWARDS-TIER DESIGN SYSTEM ==================== */
+        
+        /* ==================== GLOBAL INTERACTIVITY FIX ==================== */
+        /* Force all interactive elements to be clickable */
+        *, *::before, *::after {
+            pointer-events: auto;
         }
-        .glass-panel {
-            background: rgba(27, 32, 43, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(60, 73, 78, 0.15);
+        
+        /* Allow clicks through to buttons and interactive elements */
+        button, a, [role="button"], input, select, textarea, [onclick], [onchange] {
+            pointer-events: auto !important;
         }
-        .cyber-grid {
-            background-image: 
-                linear-gradient(to right, rgba(0, 212, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
+        
+        /* Fix inputs specifically */
+        input, select, textarea {
+            position: relative !important;
+            z-index: 100 !important;
+            pointer-events: auto !important;
+            cursor: text !important;
         }
-        .page { display: none; }
-        .page.active { display: block; }
-        .nav-link.active { 
-            background-color: #171b27; 
-            color: #00d4ff; 
-            border-right: 2px solid #00d4ff; 
+        
+        /* Root Variables */
+        :root {
+            --color-void: #050508;
+            --color-primary: #00d4ff;
+            --color-secondary: #00ff88;
+            --color-accent: #ff6b35;
+            --spring-ease: cubic-bezier(0.32, 0.72, 0, 1);
+            --bounce-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .pulse-dot {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        
+        /* Base Styles */
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
+        
+        body {
+            font-family: 'Geist', system-ui, sans-serif;
+            background: var(--color-void);
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        /* ==================== ETHEREAL GLASSMORPHISM ==================== */
+        
+        /* Glowing Orbs Background */
+        .orb-container {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+            animation: float 20s ease-in-out infinite;
+        }
+        
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.3), transparent 70%);
+            top: -200px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+        
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.2), transparent 70%);
+            bottom: -150px;
+            left: -100px;
+            animation-delay: -7s;
+        }
+        
+        .orb-3 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 107, 53, 0.15), transparent 70%);
+            top: 50%;
+            left: 30%;
+            animation-delay: -14s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.05); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(20px, 10px) scale(1.02); }
+        }
+        
+        /* Grain Overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.025;
+            pointer-events: none;
+            z-index: 9998;
+        }
+        
+        /* ==================== DOUBLE-BEZEL (DOPPELRAND) ARCHITECTURE ==================== */
+        
+        /* Outer Shell - The machined aluminum tray */
+        .bezel-outer {
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 2rem;
+            padding: 1.5px;
+            transition: all 0.5s var(--spring-ease);
+        }
+        
+        .bezel-outer:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(0, 212, 255, 0.15);
+        }
+        
+        /* Inner Core - The glass plate */
+        .bezel-inner {
+            background: rgba(12, 12, 16, 0.8);
+            border-radius: calc(2rem - 1.5px);
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .bezel-inner::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%, rgba(0,0,0,0.2) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        
+        /* Premium Card with Glow Border */
+        .card-premium {
+            background: rgba(18, 18, 26, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.5s var(--spring-ease);
+        }
+        
+        .card-premium::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), transparent 30%, transparent 70%, rgba(0, 255, 136, 0.2));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.5s var(--spring-ease);
+        }
+        
+        .card-premium:hover::before {
+            opacity: 1;
+        }
+        
+        .card-premium:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 80px -20px rgba(0, 212, 255, 0.15);
+        }
+        
+        /* ==================== TYPOGRAPHY SYSTEM ==================== */
+        
+        .text-display {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 0.95;
+            background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .text-headline {
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+        
+        .text-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        
+        .text-body {
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.7;
+            color: #8a8a9a;
+        }
+        
+        .text-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #5a5a6a;
+        }
+        
+        .text-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.625rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--color-primary);
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            padding: 0.375rem 0.875rem;
+            border-radius: 9999px;
+        }
+        
+        /* Tabular Numbers */
+        .tabular {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: 'tnum' on;
+        }
+        
+        /* ==================== SPRING PHYSICS MOTION ==================== */
+        
+        /* Spring Hover - Lift & Glow */
+        .spring-hover {
+            transition: transform 0.4s var(--bounce-ease),
+                        box-shadow 0.4s var(--spring-ease),
+                        border-color 0.3s ease;
+        }
+        
+        .spring-hover:hover {
+            transform: translateY(-3px);
+        }
+        
+        .spring-hover:active {
+            transform: translateY(-1px) scale(0.98);
+            transition-duration: 0.1s;
+        }
+        
+        /* Magnetic Pull Effect */
+        .magnetic {
+            transition: transform 0.3s var(--bounce-ease);
+        }
+        
+        .magnetic:hover {
+            transform: scale(1.02);
+        }
+        
+        /* ==================== NAVIGATION SYSTEM ==================== */
+        
+        /* Floating Pill Nav (Detached from top) */
+        .nav-floating {
+            position: fixed;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(12, 12, 16, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 9999px;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.5s var(--spring-ease);
+        }
+        
+        .nav-floating::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent 50%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        
+        /* Nav Link */
+        .nav-link {
+            position: relative;
+            padding: 0.625rem 1.25rem;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #8a8a9a;
+            border-radius: 9999px;
+            transition: all 0.4s var(--spring-ease);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .nav-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .nav-link.active {
+            color: #ffffff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, var(--color-primary), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+        
+        /* ==================== BUTTON SYSTEM ==================== */
+        
+        /* Primary CTA - Pill with Arrow-in-Button */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1.5rem;
+            background: linear-gradient(135deg, var(--color-primary), #00a8cc);
+            color: #050508;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            transition: all 0.4s var(--bounce-ease);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(255,255,255,0.2));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .btn-primary:hover::before {
+            opacity: 1;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px -10px rgba(0, 212, 255, 0.5);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0) scale(0.98);
+        }
+        
+        /* Arrow Icon Wrapper */
+        .btn-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.75rem;
+            height: 1.75rem;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 50%;
+            transition: all 0.3s var(--bounce-ease);
+        }
+        
+        .btn-primary:hover .btn-arrow {
+            transform: translate(2px, -2px) scale(1.1);
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Secondary / Ghost Button */
+        .btn-ghost {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            background: transparent;
+            color: #ffffff;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 9999px;
+            transition: all 0.4s var(--spring-ease);
+        }
+        
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .btn-ghost:active {
+            transform: translateY(0) scale(0.98);
+        }
+        
+        /* Danger Button */
+        .btn-danger {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 71, 87, 0.2);
+            border-radius: 9999px;
+            transition: all 0.4s var(--bounce-ease);
+        }
+        
+        .btn-danger:hover {
+            background: rgba(255, 71, 87, 0.2);
+            border-color: rgba(255, 71, 87, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px -10px rgba(255, 71, 87, 0.3);
+        }
+        
+        /* ==================== BUTTON FIXES ==================== */
+        
+        /* Ensure buttons inside cards are clickable */
+        .card-premium button,
+        .card-premium a[onclick],
+        .card-premium [onclick] {
+            position: relative;
+            z-index: 10;
+            transform: none !important;
+        }
+        
+        /* Ensure all buttons have proper pointer events */
+        button {
+            position: relative;
+            z-index: 10;
+            transform: none !important;
+        }
+        
+        /* Fix for reveal sections blocking buttons */
+        .reveal button,
+        .reveal [onclick] {
+            pointer-events: auto;
+            z-index: 10;
+        }
+        
+        /* Fix for inputs inside cards */
+        .card-premium input,
+        .card-premium select,
+        .card-premium textarea {
+            position: relative !important;
+            z-index: 100 !important;
+        }
+        
+        /* ==================== INPUT SYSTEM ==================== */
+        
+        .input-premium {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 1rem;
+            color: #ffffff;
+            font-size: 0.9375rem;
+            font-family: 'Geist', system-ui, sans-serif;
+            transition: all 0.4s var(--spring-ease);
+            outline: none;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .input-premium::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .input-premium:focus {
+            border-color: var(--color-primary);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15),
+                        0 10px 40px -10px rgba(0, 212, 255, 0.2);
+        }
+        
+        .input-premium:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Range Slider Styling */
+        .slider-premium {
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, var(--color-primary) 0%, rgba(0, 212, 255, 0.3) 0%);
+        }
+        
+        .slider-premium::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--color-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            transition: all 0.2s var(--spring-ease);
+        }
+        
+        .slider-premium::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+        }
+        
+        .slider-premium::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--color-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        
+        /* ==================== ASYMMETRIC BENTO GRID ==================== */
+        
+        .bento-grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(12, 1fr);
+        }
+        
+        /* Span Classes */
+        .bento-span-1 { grid-column: span 1; }
+        .bento-span-2 { grid-column: span 2; }
+        .bento-span-3 { grid-column: span 3; }
+        .bento-span-4 { grid-column: span 4; }
+        .bento-span-5 { grid-column: span 5; }
+        .bento-span-6 { grid-column: span 6; }
+        .bento-span-7 { grid-column: span 7; }
+        .bento-span-8 { grid-column: span 8; }
+        .bento-span-9 { grid-column: span 9; }
+        .bento-span-12 { grid-column: span 12; }
+        
+        /* Row Spans */
+        .bento-row-2 { grid-row: span 2; }
+        .bento-row-3 { grid-row: span 3; }
+        
+        @media (max-width: 1024px) {
+            .bento-span-8, .bento-span-7, .bento-span-6 { grid-column: span 12; }
+            .bento-span-5, .bento-span-4 { grid-column: span 6; }
+        }
+        
+        @media (max-width: 768px) {
+            .bento-span-6, .bento-span-5, .bento-span-4, .bento-span-3, .bento-span-2 { grid-column: span 12; }
+            .bento-row-2, .bento-row-3 { grid-row: span 1; }
+        }
+        
+        /* ==================== STATUS INDICATORS ==================== */
+        
+        .status-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            border: 1px solid currentColor;
+            opacity: 0.3;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+        
+        .status-live {
+            background: var(--color-secondary);
+            color: var(--color-secondary);
+            box-shadow: 0 0 12px var(--color-secondary);
+        }
+        
+        .status-warning {
+            background: var(--color-accent-amber);
+            color: var(--color-accent-amber);
+            box-shadow: 0 0 12px var(--color-accent-amber);
+        }
+        
+        .status-error {
+            background: var(--color-error);
+            color: var(--color-error);
+            box-shadow: 0 0 12px var(--color-error);
+        }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.3; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        /* ==================== SCROLL ANIMATIONS ==================== */
+        
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s var(--spring-ease);
+        }
+        
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .reveal-delay-100 { transition-delay: 100ms; }
+        .reveal-delay-200 { transition-delay: 200ms; }
+        .reveal-delay-300 { transition-delay: 300ms; }
+        .reveal-delay-400 { transition-delay: 400ms; }
+        .reveal-delay-500 { transition-delay: 500ms; }
+        
+        /* ==================== CUSTOM SCROLLBAR ==================== */
+        
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* ==================== SELECTION ==================== */
+        
+        ::selection {
+            background: rgba(0, 212, 255, 0.3);
+            color: #ffffff;
+        }
+        
+        /* ==================== UTILITY CLASSES ==================== */
+        
+        .glass {
+            background: rgba(12, 12, 16, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glow-border {
+            position: relative;
+        }
+        
+        .glow-border::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            background: linear-gradient(135deg, var(--color-primary), transparent, var(--color-secondary));
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.5s var(--spring-ease);
+        }
+        
+        .glow-border:hover::after {
+            opacity: 1;
+        }
+        
+        /* Page transitions */
+        .page { 
+            display: none; 
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .page.active { 
+            display: block;
+            animation: fadeInUp 0.6s var(--spring-ease) forwards;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes blurIn {
+            from {
+                opacity: 0;
+                filter: blur(10px);
+            }
+            to {
+                opacity: 1;
+                filter: blur(0);
+            }
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.6; }
+        }
+        
+        /* Skip link for accessibility */
+        .skip-link {
+            position: absolute;
+            left: -9999px;
+            z-index: 9999;
+            padding: 1rem;
+            background: var(--color-primary);
+            color: #050508;
+            font-weight: 600;
+        }
+        
+        .skip-link:focus {
+            left: 1rem;
+            top: 1rem;
         }
     </style>
 </head>
-<body class="bg-surface text-on-surface font-body">
-    <!-- SideNavBar -->
-    <aside class="fixed left-0 top-0 h-full z-40 flex flex-col border-r border-[#1b202b] bg-[#0e131e] w-64">
-        <div class="p-6">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-primary-container/20 flex items-center justify-center rounded-lg">
-                    <span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">security</span>
-                </div>
-                <div>
-                    <h2 class="text-lg font-black text-[#a8e8ff] font-headline leading-tight">AI-NIDS</h2>
-                    <p class="text-[10px] font-mono text-[#dee2f2]/40 tracking-tighter uppercase">v2.4.0-alpha</p>
-                </div>
+<body class="bg-void text-white font-sans overflow-x-hidden">
+    <!-- Skip to content link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <!-- Glowing Orbs Background -->
+    <div class="orb-container">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    
+    <!-- Floating Pill Navigation -->
+    <nav class="nav-floating" role="navigation" aria-label="Main navigation">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-4 pr-6 border-r border-white/10 mr-2">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-[#00d4ff] to-[#00ff88] flex items-center justify-center shadow-lg shadow-[#00d4ff]/20">
+                <i class="ph-light ph-shield-check text-lg text-void"></i>
             </div>
+            <span class="font-bold text-sm tracking-tight">AI-NIDS</span>
         </div>
-        <nav class="flex-1 mt-4 space-y-1">
-            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="dashboard">
-                <span class="material-symbols-outlined">dashboard</span>
-                <span class="text-xs font-medium">Dashboard</span>
-            </a>
-            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="alerts">
-                <span class="material-symbols-outlined">security</span>
-                <span class="text-xs font-medium">Alerts</span>
-            </a>
-            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="models">
-                <span class="material-symbols-outlined">hub</span>
-                <span class="text-xs font-medium">Models</span>
-            </a>
-            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="investigation">
-                <span class="material-symbols-outlined">search_check</span>
-                <span class="text-xs font-medium">Investigation</span>
-            </a>
-            <a class="nav-link flex items-center gap-3 px-6 py-3 text-[#dee2f2]/60 hover:bg-[#1b202b] transition-all duration-300 cursor-pointer" data-page="settings">
-                <span class="material-symbols-outlined">settings</span>
-                <span class="text-xs font-medium">Settings</span>
-            </a>
-        </nav>
-        <div class="p-4 bg-surface-container-low mx-4 mb-6 rounded-lg border border-outline-variant/10">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-[10px] uppercase font-mono text-primary/60">Neural Load</span>
-                <span class="text-[10px] font-mono text-primary" id="neural-load">82%</span>
-            </div>
-            <div class="h-1 w-full bg-surface-variant overflow-hidden rounded-full">
-                <div class="h-full bg-primary-container transition-all duration-500" id="neural-load-bar" style="width: 82%"></div>
-            </div>
+        
+        <!-- Navigation Links -->
+        <a class="nav-link active" data-page="dashboard" href="#">
+            <i class="ph-light ph-squares-four text-base"></i>
+            <span>Dashboard</span>
+        </a>
+        <a class="nav-link" data-page="alerts" href="#">
+            <i class="ph-light ph-warning-circle text-base"></i>
+            <span>Alerts</span>
+        </a>
+        <a class="nav-link" data-page="models" href="#">
+            <i class="ph-light ph-brain text-base"></i>
+            <span>Models</span>
+        </a>
+        <a class="nav-link" data-page="investigation" href="#">
+            <i class="ph-light ph-magnifying-glass text-base"></i>
+            <span>Investigation</span>
+        </a>
+        <a class="nav-link" data-page="settings" href="#">
+            <i class="ph-light ph-gear text-base"></i>
+            <span>Settings</span>
+        </a>
+        
+        <!-- Status Indicator -->
+        <div class="ml-4 pl-4 border-l border-white/10 flex items-center gap-2">
+            <span class="status-dot status-live"></span>
+            <span class="text-xs text-text-secondary tabular">LIVE</span>
         </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="ml-64 min-h-screen pb-20 cyber-grid">
-        <!-- Top App Bar -->
-        <header class="flex justify-between items-center w-full px-8 h-16 bg-[#0e131e] sticky top-0 z-30">
-            <div class="flex items-center gap-4">
-                <div class="relative">
-                    <input id="global-search" class="bg-surface-container-low border-none text-xs font-mono text-primary placeholder:text-primary/30 rounded-full pl-10 pr-4 py-2 w-64 focus:ring-1 focus:ring-primary-container" placeholder="QUERY NETWORK..." type="text"/>
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary/40 text-sm">search</span>
-                </div>
-            </div>
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2 px-3 py-1 bg-primary-container/10 rounded-full border border-primary-container/20">
-                    <span class="w-2 h-2 rounded-full bg-primary-container pulse-dot"></span>
-                    <span class="text-[10px] font-mono text-primary-container font-bold tracking-widest">LIVE STREAM</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <button class="material-symbols-outlined text-[#dee2f2] hover:bg-[#1b202b] p-2 rounded transition-colors">sensors</button>
-                    <button class="material-symbols-outlined text-[#dee2f2] hover:bg-[#1b202b] p-2 rounded transition-colors relative">
-                        <span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full" id="notification-badge"></span>
-                        notifications
-                    </button>
-                    <div class="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
-                    <div class="flex items-center gap-3">
-                        <div class="text-right hidden sm:block">
-                            <p class="text-xs font-bold text-on-surface">ANALYST_01</p>
-                            <p class="text-[9px] font-mono text-primary/60">LVL 4 CLEARANCE</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant"></div>
-                    </div>
-                </div>
-            </div>
-        </header>
+    </nav>
+    
+    <!-- Main Content Area -->
+    <main id="main-content" class="relative z-10 pt-24 pb-32 px-6 lg:px-12 min-h-[100dvh]">
 
         <!-- ==================== DASHBOARD PAGE ==================== -->
-        <div id="page-dashboard" class="page active px-8 py-8 space-y-8">
-            <!-- KPI Section -->
-            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-surface-container p-5 rounded-lg border-l-2 border-primary-container relative group overflow-hidden">
-                    <p class="text-[10px] font-mono text-primary/60 uppercase tracking-widest mb-1">Total Alerts</p>
-                    <div class="flex items-end gap-3">
-                        <h2 class="text-3xl font-headline font-bold text-on-surface tracking-tight" id="kpi-total">0</h2>
-                        <span class="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded flex items-center gap-1 mb-1.5" id="kpi-trend">
-                            <span class="material-symbols-outlined text-[10px]">trending_up</span> 0%
+        <div id="page-dashboard" class="page active">
+            <!-- Hero Section -->
+            <section class="mb-16 pt-8">
+                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+                    <div class="reveal">
+                        <span class="text-eyebrow mb-6">
+                            <i class="ph-light ph-pulse text-xs"></i>
+                            Neural Sentinel
                         </span>
+                        <h1 class="text-headline mt-4 mb-4">
+                            Threat Intelligence<br/>
+                            <span class="text-text-secondary">Dashboard</span>
+                        </h1>
+                        <p class="text-body max-w-lg">
+                            Real-time monitoring and AI-powered threat detection across your network infrastructure.
+                        </p>
                     </div>
-                </div>
-                <div class="bg-surface-container p-5 rounded-lg border-l-2 border-secondary relative group overflow-hidden">
-                    <p class="text-[10px] font-mono text-secondary/60 uppercase tracking-widest mb-1">Threats Blocked</p>
-                    <h2 class="text-3xl font-headline font-bold text-on-surface tracking-tight" id="kpi-attacks">0</h2>
-                </div>
-                <div class="bg-surface-container p-5 rounded-lg border-l-2 border-tertiary-container relative group overflow-hidden">
-                    <p class="text-[10px] font-mono text-tertiary-container/60 uppercase tracking-widest mb-1">Suspicious</p>
-                    <h2 class="text-3xl font-headline font-bold text-on-surface tracking-tight" id="kpi-suspicious">0</h2>
-                </div>
-                <div class="bg-surface-container p-5 rounded-lg border-l-2 border-primary-container relative group overflow-hidden">
-                    <p class="text-[10px] font-mono text-primary/60 uppercase tracking-widest mb-1">Model Accuracy</p>
-                    <div class="flex items-end gap-3">
-                        <h2 class="text-3xl font-headline font-bold text-on-surface tracking-tight">99.76%</h2>
-                        <span class="text-[10px] font-mono text-[#00d4ff] bg-primary-container/10 px-2 py-0.5 rounded mb-1.5 uppercase font-bold tracking-tighter">Success</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Main Charts Row -->
-            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Network Traffic Chart -->
-                <div class="lg:col-span-2 bg-surface-container-low p-6 rounded-lg flex flex-col h-[400px]">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary">Network Traffic (Packets/s)</h3>
-                        <div class="flex gap-2">
-                            <span class="w-2 h-2 rounded-full bg-primary-container"></span>
-                            <span class="text-[10px] font-mono text-on-surface-variant">Live Telemetry</span>
+                    
+                    <!-- Quick Stats Row -->
+                    <div class="flex items-center gap-6 reveal reveal-delay-200">
+                        <div class="flex items-center gap-3 px-5 py-3 rounded-full border border-white/10 bg-white/5">
+                            <span class="status-dot status-live"></span>
+                            <span class="text-sm text-text-secondary">Live Monitoring</span>
                         </div>
-                    </div>
-                    <div class="flex-1 relative flex items-end gap-1" id="traffic-chart">
-                        <!-- Chart bars will be generated by JS -->
-                    </div>
-                    <div class="absolute bottom-[-24px] w-full flex justify-between px-2" id="traffic-labels">
-                        <span class="text-[9px] font-mono text-outline">00:00</span>
-                        <span class="text-[9px] font-mono text-outline">06:00</span>
-                        <span class="text-[9px] font-mono text-outline">12:00</span>
-                        <span class="text-[9px] font-mono text-outline">18:00</span>
-                        <span class="text-[9px] font-mono text-outline">23:59</span>
-                    </div>
-                </div>
-                <!-- Attack Distribution Donut -->
-                <div class="bg-surface-container-low p-6 rounded-lg flex flex-col h-[400px]">
-                    <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary mb-6 text-center">Attack Distribution</h3>
-                    <div class="flex-1 flex flex-col items-center justify-center relative">
-                        <div class="relative w-48 h-48 rounded-full flex items-center justify-center">
-                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100" id="donut-chart">
-                                <!-- Donut segments generated by JS -->
-                            </svg>
-                            <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                <p class="text-[10px] font-mono text-outline uppercase">Malicious</p>
-                                <p class="text-3xl font-headline font-bold text-primary" id="malicious-percent">0%</p>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                <i class="ph-light ph-user text-lg text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold">Analyst_01</p>
+                                <p class="text-xs text-text-muted">Clearance Level 4</p>
                             </div>
                         </div>
-                        <div class="mt-8 grid grid-cols-2 gap-x-8 gap-y-2" id="donut-legend">
-                            <!-- Legend items generated by JS -->
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Asymmetric Bento Grid -->
+            <section class="mb-16">
+                <!-- Row 1: Large Feature Cards -->
+                <div class="bento-grid gap-6 mb-6">
+                    <!-- KPI Card 1: Total Alerts (Large) -->
+                    <div class="bento-span-4 reveal">
+                        <div class="card-premium p-8 h-full min-h-[180px] relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                            <div class="relative z-10">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <span class="status-dot status-live"></span>
+                                    <span class="text-label">Total Alerts</span>
+                                </div>
+                                <div class="flex items-end gap-4">
+                                    <span class="text-5xl font-bold tabular" id="kpi-total">0</span>
+                                    <span class="px-3 py-1 rounded-full bg-white/5 text-xs text-secondary flex items-center gap-1" id="kpi-trend">
+                                        <i class="ph-light ph-trend-up text-xs"></i>
+                                        <span>0%</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="absolute bottom-4 right-4">
+                                <i class="ph-light ph-bell text-5xl text-white/5"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- KPI Card 2: Threats Blocked -->
+                    <div class="bento-span-4 reveal reveal-delay-100">
+                        <div class="card-premium p-8 h-full min-h-[180px] relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-secondary/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                            <div class="relative z-10">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="ph-light ph-shield-check text-primary"></i>
+                                    <span class="text-label">Threats Blocked</span>
+                                </div>
+                                <div class="flex items-end gap-4">
+                                    <span class="text-5xl font-bold tabular text-secondary" id="kpi-attacks">0</span>
+                                </div>
+                            </div>
+                            <div class="absolute bottom-4 right-4">
+                                <i class="ph-light ph-shield text-5xl text-white/5"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- KPI Card 3: Suspicious -->
+                    <div class="bento-span-4 reveal reveal-delay-200">
+                        <div class="card-premium p-8 h-full min-h-[180px] relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-accent-amber/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                            <div class="relative z-10">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="ph-light ph-warning text-accent-amber"></i>
+                                    <span class="text-label">Suspicious</span>
+                                </div>
+                                <div class="flex items-end gap-4">
+                                    <span class="text-5xl font-bold tabular text-accent-amber" id="kpi-suspicious">0</span>
+                                </div>
+                            </div>
+                            <div class="absolute bottom-4 right-4">
+                                <i class="ph-light ph-eye text-5xl text-white/5"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Row 2: Charts Row -->
+                <div class="bento-grid gap-6">
+                    <!-- Network Traffic Chart (Wide) -->
+                    <div class="bento-span-8 reveal reveal-delay-300">
+                        <div class="card-premium p-6 h-full min-h-[320px]">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 class="text-title mb-1">Network Traffic</h3>
+                                    <p class="text-sm text-text-secondary">Packets per second over time</p>
+                                </div>
+                                <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                                    <span class="status-dot status-live"></span>
+                                    <span class="text-xs text-text-secondary tabular">Live Telemetry</span>
+                                </div>
+                            </div>
+                            <div class="flex-1 flex items-end gap-1 h-48 px-2" id="traffic-chart">
+                                <!-- Chart bars generated by JS -->
+                            </div>
+                            <div class="flex justify-between mt-4 px-2 text-xs text-text-muted">
+                                <span>00:00</span>
+                                <span>06:00</span>
+                                <span>12:00</span>
+                                <span>18:00</span>
+                                <span>23:59</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Attack Distribution (Donut) -->
+                    <div class="bento-span-4 reveal reveal-delay-400">
+                        <div class="card-premium p-6 h-full min-h-[320px] flex flex-col">
+                            <h3 class="text-title mb-1">Attack Distribution</h3>
+                            <p class="text-sm text-text-secondary mb-6">Threat categorization</p>
+                            <div class="flex-1 flex items-center justify-center relative">
+                                <div class="relative w-40 h-40">
+                                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100" id="donut-chart">
+                                        <!-- Donut segments generated by JS -->
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <p class="text-2xl font-bold tabular text-primary" id="malicious-percent">0%</p>
+                                        <p class="text-xs text-text-muted">Malicious</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-6 space-y-2" id="donut-legend">
+                                <!-- Legend items generated by JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
-
+            
             <!-- Attack Simulator Section -->
-            <section class="bg-surface-container-low p-6 rounded-lg">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary">Attack Simulator</h3>
-                    <span class="text-[10px] font-mono text-outline">Generate test alerts</span>
-                </div>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="simulateAttack('ddos')" class="px-4 py-2 bg-error/10 text-error text-xs font-bold rounded border border-error/30 hover:bg-error/20 transition-colors">
-                        DDoS Attack
-                    </button>
-                    <button onclick="simulateAttack('synflood')" class="px-4 py-2 bg-error/10 text-error text-xs font-bold rounded border border-error/30 hover:bg-error/20 transition-colors">
-                        SYN Flood
-                    </button>
-                    <button onclick="simulateAttack('portscan')" class="px-4 py-2 bg-tertiary-container/10 text-tertiary-container text-xs font-bold rounded border border-tertiary-container/30 hover:bg-tertiary-container/20 transition-colors">
-                        Port Scan
-                    </button>
-                    <button onclick="simulateAttack('bruteforce')" class="px-4 py-2 bg-tertiary-container/10 text-tertiary-container text-xs font-bold rounded border border-tertiary-container/30 hover:bg-tertiary-container/20 transition-colors">
-                        Brute Force
-                    </button>
-                    <button onclick="simulateAttack('normal')" class="px-4 py-2 bg-primary-container/10 text-primary-container text-xs font-bold rounded border border-primary-container/30 hover:bg-primary-container/20 transition-colors">
-                        Normal Traffic
-                    </button>
-                    <button onclick="simulateAttack('all')" class="px-4 py-2 bg-surface-container text-on-surface text-xs font-bold rounded border border-outline-variant hover:bg-surface-container-high transition-colors">
-                        Simulate All
-                    </button>
-                </div>
-                <div class="mt-3 flex items-center gap-2" id="simulate-status" style="display: none;">
-                    <span class="w-2 h-2 rounded-full bg-primary-container pulse-dot"></span>
-                    <span class="text-[10px] font-mono text-primary-container" id="simulate-message">Simulating...</span>
+            <section class="mb-16 reveal">
+                <div class="card-premium p-8">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+                        <div>
+                            <span class="text-eyebrow mb-3">
+                                <i class="ph-light ph-play text-xs"></i>
+                                Testing
+                            </span>
+                            <h3 class="text-title">Attack Simulator</h3>
+                            <p class="text-sm text-text-secondary mt-1">Generate test alerts for system validation</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-4">
+                        <button onclick="simulateAttack('ddos')" class="btn-danger">
+                            <i class="ph-light ph-lightning text-sm"></i>
+                            DDoS Attack
+                        </button>
+                        <button onclick="simulateAttack('synflood')" class="btn-danger">
+                            <i class="ph-light ph-flood text-sm"></i>
+                            SYN Flood
+                        </button>
+                        <button onclick="simulateAttack('portscan')" class="btn-ghost">
+                            <i class="ph-light ph-scan text-sm"></i>
+                            Port Scan
+                        </button>
+                        <button onclick="simulateAttack('bruteforce')" class="btn-ghost">
+                            <i class="ph-light ph-key text-sm"></i>
+                            Brute Force
+                        </button>
+                        <button onclick="simulateAttack('normal')" class="btn-ghost">
+                            <i class="ph-light ph-check-circle text-sm"></i>
+                            Normal Traffic
+                        </button>
+                        <button onclick="simulateAttack('all')" class="btn-primary">
+                            Simulate All
+                            <span class="btn-arrow">
+                                <i class="ph-light ph-arrow-right text-xs"></i>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="mt-4 flex items-center gap-3" id="simulate-status" style="display: none;">
+                        <span class="status-dot status-live"></span>
+                        <span class="text-sm text-text-secondary" id="simulate-message">Simulating...</span>
+                    </div>
                 </div>
             </section>
-
-            <!-- Bottom Data Row -->
-            <section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <!-- Live Alert Feed -->
-                <div class="xl:col-span-2 bg-surface-container-low rounded-lg overflow-hidden flex flex-col">
-                    <div class="p-6 border-b border-outline-variant/10 flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary">Live Alert Feed</h3>
-                            <span class="px-2 py-0.5 bg-error-container/20 text-error text-[9px] font-bold rounded pulse-dot">CRITICAL ACTIVE</span>
+            
+            <!-- Live Alert Feed & Sidebar -->
+            <section class="mb-16">
+                <div class="bento-grid gap-6">
+                    <!-- Alert Feed (Wide) -->
+                    <div class="bento-span-8 reveal">
+                        <div class="card-premium overflow-hidden">
+                            <div class="p-6 border-b border-white/5">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-4">
+                                        <h3 class="text-title">Live Alert Feed</h3>
+                                        <span class="px-3 py-1 rounded-full bg-error/10 text-error text-xs font-medium flex items-center gap-2">
+                                            <span class="status-dot status-error"></span>
+                                            Critical Active
+                                        </span>
+                                    </div>
+                                    <button onclick="clearAlerts()" class="btn-ghost text-xs">
+                                        <i class="ph-light ph-trash text-sm"></i>
+                                        Clear All
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto max-h-[400px]">
+                                <table class="w-full">
+                                    <thead class="bg-white/5 sticky top-0">
+                                        <tr class="text-left text-xs text-text-muted uppercase tracking-wider">
+                                            <th class="px-6 py-4 font-medium">Source IP</th>
+                                            <th class="px-6 py-4 font-medium">Dest IP</th>
+                                            <th class="px-6 py-4 font-medium">Type</th>
+                                            <th class="px-6 py-4 font-medium">Verdict</th>
+                                            <th class="px-6 py-4 font-medium">Confidence</th>
+                                            <th class="px-6 py-4 font-medium text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-white/5" id="alerts-table-body">
+                                        <!-- Alerts generated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <button onclick="clearAlerts()" class="text-xs font-mono text-primary hover:underline uppercase">Clear All</button>
                     </div>
-                    <div class="flex-1 overflow-x-auto max-h-[400px]">
-                        <table class="w-full text-left">
-                            <thead class="bg-surface-container/50 border-b border-outline-variant/10 sticky top-0">
-                                <tr>
-                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Source IP</th>
-                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Dest IP</th>
-                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Type</th>
-                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Verdict</th>
-                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase">Confidence</th>
-                                    <th class="px-6 py-3 text-[10px] font-mono text-outline uppercase text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-outline-variant/5" id="alerts-table-body">
-                                <!-- Alerts generated by JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <!-- Right Sidebar Panels -->
-                <div class="space-y-6">
-                    <!-- Top Attackers -->
-                    <div class="bg-surface-container-low p-6 rounded-lg">
-                        <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary mb-4">Top Attackers</h3>
-                        <div class="space-y-4" id="top-attackers">
-                            <!-- Generated by JS -->
+                    
+                    <!-- Sidebar Cards -->
+                    <div class="bento-span-4 space-y-6">
+                        <!-- Top Attackers -->
+                        <div class="reveal reveal-delay-100">
+                            <div class="card-premium p-6">
+                                <div class="flex items-center gap-3 mb-6">
+                                    <div class="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center">
+                                        <i class="ph-light ph-user-warning text-lg text-error"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold">Top Attackers</h4>
+                                        <p class="text-xs text-text-muted">By alert count</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-4" id="top-attackers">
+                                    <!-- Generated by JS -->
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <!-- Active Blocklist -->
-                    <div class="bg-surface-container-low p-6 rounded-lg">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-sm font-headline font-bold uppercase tracking-wider text-primary">Active Blocklist</h3>
-                            <span class="material-symbols-outlined text-outline text-sm">settings_ethernet</span>
-                        </div>
-                        <div class="space-y-3" id="blocked-ips-list">
-                            <!-- Generated by JS -->
+                        
+                        <!-- Active Blocklist -->
+                        <div class="reveal reveal-delay-200">
+                            <div class="card-premium p-6">
+                                <div class="flex items-center justify-between mb-6">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-accent-amber/10 flex items-center justify-center">
+                                            <i class="ph-light ph-prohibit text-lg text-accent-amber"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-semibold">Blocklist</h4>
+                                            <p class="text-xs text-text-muted">Active entries</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-3" id="blocked-ips-list">
+                                    <!-- Generated by JS -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -311,588 +1196,720 @@
         </div>
 
         <!-- ==================== ALERTS PAGE ==================== -->
-        <div id="page-alerts" class="page px-8 py-8 space-y-8">
-            <!-- Header -->
-            <section class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                <div>
-                    <h1 class="text-4xl font-bold font-headline text-on-surface tracking-tight mb-2">Alert Detection</h1>
-                    <div class="flex items-center gap-4 text-outline text-sm">
-                        <span class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-primary-container"></span>
-                            <span id="active-nodes">12</span> Active Nodes
+        <div id="page-alerts" class="page">
+            <!-- Hero Section -->
+            <section class="mb-16 pt-8">
+                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+                    <div class="reveal">
+                        <span class="text-eyebrow mb-6">
+                            <i class="ph-light ph-warning-circle text-xs"></i>
+                            Real-time
                         </span>
-                        <span class="h-1 w-1 rounded-full bg-outline-variant"></span>
-                        <span class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-error"></span>
-                            <span id="active-alerts-count">0</span> Active Alerts
-                        </span>
-                    </div>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="exportAlerts()" class="px-5 py-2.5 bg-surface-container border border-outline-variant/30 text-xs font-bold text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">download</span>
-                        Export Logs
-                    </button>
-                    <button onclick="clearAlerts()" class="px-5 py-2.5 bg-error-container text-on-error-container text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">delete_sweep</span>
-                        Purge Queue
-                    </button>
-                </div>
-            </section>
-
-            <!-- Hero Metrics -->
-            <section class="grid grid-cols-12 gap-6">
-                <!-- Threat Velocity Chart -->
-                <div class="col-span-12 lg:col-span-8 bg-surface-container-low p-6 flex flex-col justify-between min-h-[320px]">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h3 class="text-xs font-bold text-outline uppercase tracking-widest">Threat Velocity</h3>
-                            <p class="text-[10px] text-outline/60 font-mono mt-1">Alerts per minute (last 60m)</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-3xl font-bold font-headline text-primary-container" id="threat-velocity-total">0</span>
-                            <p class="text-[10px] text-outline font-mono uppercase tracking-tighter">Total Events</p>
+                        <h1 class="text-headline mt-4 mb-4">
+                            Alert Detection<br/>
+                            <span class="text-text-secondary">System</span>
+                        </h1>
+                        <div class="flex items-center gap-6 text-sm text-text-secondary">
+                            <span class="flex items-center gap-2">
+                                <span class="status-dot status-live"></span>
+                                <span id="active-nodes">12</span> Active Nodes
+                            </span>
+                            <span class="flex items-center gap-2">
+                                <span class="status-dot status-error"></span>
+                                <span id="active-alerts-count">0</span> Active Alerts
+                            </span>
                         </div>
                     </div>
-                    <div class="flex-1 flex items-end gap-1 px-2" id="threat-velocity-chart">
-                        <!-- Generated by JS -->
-                    </div>
-                </div>
-                <!-- Critical Anomalies Card -->
-                <div class="col-span-12 lg:col-span-4 bg-surface-container p-6 border-l-4 border-error flex flex-col justify-between">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-xs font-bold text-error uppercase tracking-widest">Critical Anomalies</h3>
-                        <span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
-                    </div>
-                    <div class="mt-8">
-                        <div class="text-6xl font-bold font-headline text-on-surface" id="critical-count">0</div>
-                        <p class="text-xs text-error font-bold font-mono uppercase mt-2 tracking-widest">Critical Alerts</p>
-                    </div>
-                    <div class="mt-6">
-                        <button class="w-full py-3 bg-error/10 hover:bg-error/20 border border-error/30 text-error text-[10px] font-black uppercase tracking-widest transition-all">
-                            Initialize Lockdown Protocol
+                    <div class="flex items-center gap-4 reveal reveal-delay-200">
+                        <button onclick="exportAlerts()" class="btn-ghost">
+                            <i class="ph-light ph-download-simple text-sm"></i>
+                            Export Logs
+                        </button>
+                        <button onclick="clearAlerts()" class="btn-danger">
+                            <i class="ph-light ph-trash text-sm"></i>
+                            Purge Queue
                         </button>
                     </div>
                 </div>
             </section>
-
-            <!-- Full Alerts Table -->
-            <section class="bg-surface-container-low rounded-lg overflow-hidden">
-                <div class="p-4 border-b border-outline-variant/10 flex justify-between items-center">
-                    <h3 class="text-xs font-bold text-on-surface uppercase tracking-widest font-headline">Live Incident Queue</h3>
-                    <div class="flex gap-2">
-                        <span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
-                        <span class="text-[10px] text-outline font-mono">Syncing <span id="sync-time">120</span>ms</span>
+            
+            <!-- Metrics Section -->
+            <section class="mb-16">
+                <div class="bento-grid gap-6">
+                    <!-- Threat Velocity (Wide) -->
+                    <div class="bento-span-8 reveal">
+                        <div class="card-premium p-6 min-h-[320px]">
+                            <div class="flex items-center justify-between mb-8">
+                                <div>
+                                    <span class="text-label mb-2 block">Threat Velocity</span>
+                                    <p class="text-sm text-text-secondary">Alerts per minute (last 60 minutes)</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-4xl font-bold tabular text-primary" id="threat-velocity-total">0</span>
+                                    <p class="text-xs text-text-muted mt-1">Total Events</p>
+                                </div>
+                            </div>
+                            <div class="h-48 flex items-end gap-1 px-2" id="threat-velocity-chart">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Critical Anomalies -->
+                    <div class="bento-span-4 reveal reveal-delay-100">
+                        <div class="card-premium p-6 h-full relative overflow-hidden border border-error/20">
+                            <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-error/10 to-transparent rounded-full blur-3xl"></div>
+                            <div class="relative z-10">
+                                <div class="flex items-center justify-between mb-6">
+                                    <span class="text-label">Critical Anomalies</span>
+                                    <i class="ph-light ph-warning-circle text-xl text-error"></i>
+                                </div>
+                                <div class="text-6xl font-bold mb-4" id="critical-count">0</div>
+                                <p class="text-sm text-error mb-6">Critical Alerts Detected</p>
+                                <button class="btn-danger w-full justify-center">
+                                    <i class="ph-light ph-lock-key text-sm"></i>
+                                    Initialize Lockdown
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="overflow-x-auto max-h-[500px]">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-surface-container/50 border-b border-outline-variant/10 sticky top-0">
-                            <tr class="text-[10px] text-outline uppercase font-mono tracking-tighter">
-                                <th class="px-6 py-4 font-medium">Timestamp</th>
-                                <th class="px-6 py-4 font-medium">Source IP</th>
-                                <th class="px-6 py-4 font-medium">Dest IP</th>
-                                <th class="px-6 py-4 font-medium">Port</th>
-                                <th class="px-6 py-4 font-medium">Protocol</th>
-                                <th class="px-6 py-4 font-medium">Threat Level</th>
-                                <th class="px-6 py-4 font-medium">Confidence</th>
-                                <th class="px-6 py-4 font-medium text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-[11px]" id="full-alerts-table">
-                            <!-- Generated by JS -->
-                        </tbody>
-                    </table>
+            </section>
+            
+            <!-- Full Alerts Table -->
+            <section class="reveal">
+                <div class="card-premium overflow-hidden">
+                    <div class="p-6 border-b border-white/5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <h3 class="text-title">Live Incident Queue</h3>
+                                <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20">
+                                    <span class="status-dot status-live"></span>
+                                    <span class="text-xs text-secondary tabular">Syncing <span id="sync-time">120</span>ms</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-[500px]">
+                        <table class="w-full">
+                            <thead class="bg-white/5 sticky top-0">
+                                <tr class="text-left text-xs text-text-muted uppercase tracking-wider">
+                                    <th class="px-6 py-4 font-medium">Timestamp</th>
+                                    <th class="px-6 py-4 font-medium">Source IP</th>
+                                    <th class="px-6 py-4 font-medium">Dest IP</th>
+                                    <th class="px-6 py-4 font-medium">Port</th>
+                                    <th class="px-6 py-4 font-medium">Protocol</th>
+                                    <th class="px-6 py-4 font-medium">Threat Level</th>
+                                    <th class="px-6 py-4 font-medium">Confidence</th>
+                                    <th class="px-6 py-4 font-medium text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5" id="full-alerts-table">
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         </div>
 
         <!-- ==================== MODELS PAGE ==================== -->
-        <div id="page-models" class="page px-8 py-8 space-y-8">
-            <!-- Header -->
-            <section class="flex justify-between items-end mb-8">
-                <div>
-                    <h1 class="text-4xl font-bold font-headline text-primary tracking-tight">Model Orchestration</h1>
-                    <p class="text-on-surface-variant font-body max-w-xl mt-2">Manage neural architectures and ensemble strategies for autonomous threat detection.</p>
-                </div>
-                <div class="flex gap-4">
-                    <button onclick="retrainModels()" class="px-5 py-2 rounded-sm border border-primary text-primary text-xs font-bold hover:bg-primary/10 transition-colors uppercase tracking-widest">Retrain All</button>
-                    <button onclick="deployEnsemble()" class="px-5 py-2 rounded-sm bg-gradient-to-r from-primary to-primary-container text-on-primary text-xs font-bold hover:brightness-110 transition-all uppercase tracking-widest shadow-[0_0_20px_rgba(0,212,255,0.2)]">Deploy Ensemble</button>
+        <div id="page-models" class="page">
+            <!-- Hero Section -->
+            <section class="mb-16 pt-8">
+                <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+                    <div class="reveal">
+                        <span class="text-eyebrow mb-6">
+                            <i class="ph-light ph-brain text-xs"></i>
+                            Machine Learning
+                        </span>
+                        <h1 class="text-headline mt-4 mb-4">
+                            Model<br/>
+                            <span class="text-text-secondary">Orchestration</span>
+                        </h1>
+                        <p class="text-body max-w-lg">
+                            Manage neural architectures and ensemble strategies for autonomous threat detection.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4 reveal reveal-delay-200">
+                        <button onclick="retrainModels()" class="btn-ghost">
+                            <i class="ph-light ph-arrows-clockwise text-sm"></i>
+                            Retrain All
+                        </button>
+                        <button onclick="deployEnsemble()" class="btn-primary">
+                            Deploy Ensemble
+                            <span class="btn-arrow">
+                                <i class="ph-light ph-rocket-launch text-xs"></i>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </section>
-
+            
             <!-- Model Grid -->
-            <section class="grid grid-cols-12 gap-6">
-                <!-- Ensemble Master Card -->
-                <div class="col-span-12 lg:col-span-5 bg-surface-container-low rounded-xl p-8 relative overflow-hidden">
-                    <div class="relative z-10 flex flex-col items-center text-center h-full justify-center">
-                        <div class="mb-2">
-                            <span class="px-3 py-1 bg-primary-container/10 border border-primary-container/30 text-primary-container text-[10px] font-mono tracking-widest rounded-full uppercase">Neural Fusion Protocol Active</span>
-                        </div>
-                        <div class="relative w-64 h-64 flex items-center justify-center my-6">
-                            <div class="absolute inset-0 rounded-full border-[12px] border-surface-container-highest"></div>
-                            <svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="44" fill="none" stroke="#171b27" stroke-width="12"/>
-                                <circle cx="50" cy="50" r="44" fill="none" stroke="#00d4ff" stroke-width="12" 
-                                    stroke-dasharray="277" stroke-dashoffset="5" stroke-linecap="round" id="ensemble-circle"/>
-                            </svg>
-                            <div class="flex flex-col items-center">
-                                <span class="text-5xl font-black font-headline text-on-surface"><span id="ensemble-confidence">98.4</span><span class="text-primary text-2xl">%</span></span>
-                                <span class="text-[10px] font-mono text-on-surface-variant uppercase tracking-[0.2em] mt-2">Confidence Score</span>
-                            </div>
-                        </div>
-                        <h3 class="text-xl font-bold font-headline text-primary mt-4 uppercase tracking-tight">System Confidence</h3>
-                        <p class="text-sm text-on-surface-variant mt-2 max-w-xs">Weighted voting across 4 sub-architectures.</p>
-                    </div>
-                </div>
-
-                <!-- Model Cards Grid -->
-                <div class="col-span-12 lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Random Forest -->
-                    <div class="bg-surface-container rounded-lg p-6 hover:bg-surface-container-high transition-colors group">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-10 h-10 bg-surface-container-low flex items-center justify-center rounded">
-                                <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">account_tree</span>
-                            </div>
-                            <span class="text-[10px] font-mono text-primary/40 uppercase">Classification</span>
-                        </div>
-                        <h4 class="text-lg font-bold font-headline mb-4">Random Forest</h4>
-                        <div class="space-y-3">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-on-surface-variant">Accuracy</span>
-                                <span class="text-xs font-mono text-primary">99.76%</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-on-surface-variant">Recall</span>
-                                <span class="text-xs font-mono text-primary">97.5%</span>
-                            </div>
-                            <div class="pt-4 flex items-end gap-1 h-12">
-                                <div class="flex-1 bg-primary/20 h-4 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/40 h-8 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/60 h-6 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary-container h-10 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/30 h-5 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/70 h-9 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary-container h-11 rounded-t-sm"></div>
+            <section class="mb-16">
+                <div class="bento-grid gap-6">
+                    <!-- Ensemble Master Card (Large) -->
+                    <div class="bento-span-5 reveal">
+                        <div class="card-premium p-8 h-full min-h-[420px] relative overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5"></div>
+                            <div class="relative z-10 flex flex-col items-center justify-center h-full text-center">
+                                <span class="text-eyebrow mb-6">
+                                    <i class="ph-light ph-intersect text-xs"></i>
+                                    Neural Fusion Active
+                                </span>
+                                <div class="relative w-48 h-48 mb-8">
+                                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="8"/>
+                                        <circle cx="50" cy="50" r="44" fill="none" stroke="url(#ensembleGradient)" stroke-width="8" 
+                                            stroke-dasharray="276.46" stroke-dashoffset="4.4" stroke-linecap="round" 
+                                            id="ensemble-circle"/>
+                                        <defs>
+                                            <linearGradient id="ensembleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" style="stop-color:#00d4ff"/>
+                                                <stop offset="100%" style="stop-color:#00ff88"/>
+                                            </linearGradient>
+                                        </defs>
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span class="text-4xl font-bold"><span id="ensemble-confidence">98.4</span><span class="text-primary text-lg">%</span></span>
+                                    </div>
+                                </div>
+                                <h3 class="text-xl font-bold mb-2">System Confidence</h3>
+                                <p class="text-sm text-text-secondary">Weighted voting across 4 sub-architectures</p>
                             </div>
                         </div>
                     </div>
-                    <!-- XGBoost -->
-                    <div class="bg-surface-container rounded-lg p-6 hover:bg-surface-container-high transition-colors group">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-10 h-10 bg-surface-container-low flex items-center justify-center rounded">
-                                <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">bolt</span>
+                    
+                    <!-- Model Cards Grid -->
+                    <div class="bento-span-7">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                            <!-- Random Forest -->
+                            <div class="reveal reveal-delay-100">
+                                <div class="card-premium p-6 h-full">
+                                    <div class="flex items-center justify-between mb-6">
+                                        <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                                            <i class="ph-light ph-tree-structure text-xl text-primary"></i>
+                                        </div>
+                                        <span class="text-label">Classification</span>
+                                    </div>
+                                    <h4 class="text-lg font-bold mb-4">Random Forest</h4>
+                                    <div class="space-y-3 mb-6">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-text-secondary">Accuracy</span>
+                                            <span class="text-sm font-semibold tabular text-primary">99.76%</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-text-secondary">Recall</span>
+                                            <span class="text-sm font-semibold tabular text-primary">97.5%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-end gap-1 h-12">
+                                        <div class="flex-1 bg-primary/20 h-4 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-primary/40 h-8 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-primary/60 h-6 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-primary h-10 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-primary/30 h-5 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-primary/70 h-9 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-primary h-11 rounded-t-sm"></div>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="text-[10px] font-mono text-primary/40 uppercase">Gradient Boosted</span>
-                        </div>
-                        <h4 class="text-lg font-bold font-headline mb-4">XGBoost</h4>
-                        <div class="space-y-3">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-on-surface-variant">Accuracy</span>
-                                <span class="text-xs font-mono text-primary">99.1%</span>
+                            
+                            <!-- XGBoost -->
+                            <div class="reveal reveal-delay-200">
+                                <div class="card-premium p-6 h-full">
+                                    <div class="flex items-center justify-between mb-6">
+                                        <div class="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center">
+                                            <i class="ph-light ph-lightning text-xl text-secondary"></i>
+                                        </div>
+                                        <span class="text-label">Gradient Boosted</span>
+                                    </div>
+                                    <h4 class="text-lg font-bold mb-4">XGBoost</h4>
+                                    <div class="space-y-3 mb-6">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-text-secondary">Accuracy</span>
+                                            <span class="text-sm font-semibold tabular text-secondary">99.1%</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-text-secondary">Precision</span>
+                                            <span class="text-sm font-semibold tabular text-secondary">98.8%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-end gap-1 h-12">
+                                        <div class="flex-1 bg-secondary/40 h-6 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-secondary/20 h-3 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-secondary h-10 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-secondary/60 h-7 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-secondary/50 h-5 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-secondary/80 h-9 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-secondary h-12 rounded-t-sm"></div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-on-surface-variant">Precision</span>
-                                <span class="text-xs font-mono text-primary">98.8%</span>
+                            
+                            <!-- Autoencoder -->
+                            <div class="reveal reveal-delay-300">
+                                <div class="card-premium p-6 h-full">
+                                    <div class="flex items-center justify-between mb-6">
+                                        <div class="w-12 h-12 rounded-xl bg-accent-warm/10 flex items-center justify-center">
+                                            <i class="ph-light ph-brain text-xl text-accent-warm"></i>
+                                        </div>
+                                        <span class="text-label">Neural Network</span>
+                                    </div>
+                                    <h4 class="text-lg font-bold mb-4">Autoencoder</h4>
+                                    <div class="space-y-3 mb-4">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-text-secondary">Recon. Loss</span>
+                                            <span class="text-sm font-semibold tabular text-accent-warm">0.0024</span>
+                                        </div>
+                                    </div>
+                                    <div class="relative h-16">
+                                        <svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+                                            <path d="M0,30 L20,25 L40,28 L60,15 L80,10 L100,5" fill="none" stroke="#ff6b35" stroke-width="2"/>
+                                            <path d="M0,30 L20,25 L40,28 L60,15 L80,10 L100,5 L100,40 L0,40 Z" fill="url(#aeGrad)" opacity="0.3"/>
+                                            <defs>
+                                                <linearGradient id="aeGrad" x1="0%" x2="0%" y1="0%" y2="100%">
+                                                    <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1"/>
+                                                    <stop offset="100%" style="stop-color:#ff6b35;stop-opacity:0"/>
+                                                </linearGradient>
+                                            </defs>
+                                        </svg>
+                                    </div>
+                                    <p class="text-xs text-text-muted mt-2 text-right">Decreasing Trend</p>
+                                </div>
                             </div>
-                            <div class="pt-4 flex items-end gap-1 h-12">
-                                <div class="flex-1 bg-primary/40 h-6 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/20 h-3 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary-container h-10 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/60 h-7 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/50 h-5 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/80 h-9 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary-container h-12 rounded-t-sm"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Autoencoder -->
-                    <div class="bg-surface-container rounded-lg p-6 hover:bg-surface-container-high transition-colors group">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-10 h-10 bg-surface-container-low flex items-center justify-center rounded">
-                                <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">all_inclusive</span>
-                            </div>
-                            <span class="text-[10px] font-mono text-primary/40 uppercase">Neural Network</span>
-                        </div>
-                        <h4 class="text-lg font-bold font-headline mb-4">Autoencoder</h4>
-                        <div class="space-y-3">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-on-surface-variant">Recon. Loss</span>
-                                <span class="text-xs font-mono text-primary">0.0024</span>
-                            </div>
-                            <div class="pt-4 relative h-16">
-                                <svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
-                                    <path d="M0,30 L20,25 L40,28 L60,15 L80,10 L100,5" fill="none" stroke="#00d4ff" stroke-width="2"/>
-                                    <path d="M0,30 L20,25 L40,28 L60,15 L80,10 L100,5 L100,40 L0,40 Z" fill="url(#grad1)" opacity="0.2"/>
-                                    <defs>
-                                        <lineargradient id="grad1" x1="0%" x2="0%" y1="0%" y2="100%">
-                                            <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1"/>
-                                            <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0"/>
-                                        </lineargradient>
-                                    </defs>
-                                </svg>
-                            </div>
-                            <span class="text-[10px] font-mono text-primary/40 block text-right">Decreasing Trend</span>
-                        </div>
-                    </div>
-                    <!-- Isolation Forest -->
-                    <div class="bg-surface-container rounded-lg p-6 hover:bg-surface-container-high transition-colors group">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-10 h-10 bg-surface-container-low flex items-center justify-center rounded">
-                                <span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">filter_center_focus</span>
-                            </div>
-                            <span class="text-[10px] font-mono text-primary/40 uppercase">Anomaly Detection</span>
-                        </div>
-                        <h4 class="text-lg font-bold font-headline mb-4">Isolation Forest</h4>
-                        <div class="space-y-3">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs text-on-surface-variant">Anomaly Score</span>
-                                <span class="text-xs font-mono text-primary" id="if-score">0.82</span>
-                            </div>
-                            <div class="pt-4 flex items-end gap-1 h-12">
-                                <div class="flex-1 bg-primary/10 h-2 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/20 h-4 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/30 h-6 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/50 h-8 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/70 h-10 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary-container h-12 rounded-t-sm"></div>
-                                <div class="flex-1 bg-primary/40 h-5 rounded-t-sm"></div>
+                            
+                            <!-- Isolation Forest -->
+                            <div class="reveal reveal-delay-400">
+                                <div class="card-premium p-6 h-full">
+                                    <div class="flex items-center justify-between mb-6">
+                                        <div class="w-12 h-12 rounded-xl bg-accent-amber/10 flex items-center justify-center">
+                                            <i class="ph-light ph-target text-xl text-accent-amber"></i>
+                                        </div>
+                                        <span class="text-label">Anomaly Detection</span>
+                                    </div>
+                                    <h4 class="text-lg font-bold mb-4">Isolation Forest</h4>
+                                    <div class="space-y-3 mb-4">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-text-secondary">Anomaly Score</span>
+                                            <span class="text-sm font-semibold tabular text-accent-amber" id="if-score">0.82</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-end gap-1 h-12">
+                                        <div class="flex-1 bg-accent-amber/10 h-2 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-accent-amber/20 h-4 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-accent-amber/30 h-6 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-accent-amber/50 h-8 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-accent-amber/70 h-10 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-accent-amber h-12 rounded-t-sm"></div>
+                                        <div class="flex-1 bg-accent-amber/40 h-5 rounded-t-sm"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
-
+            
             <!-- Live Neural Inference Stream -->
-            <section class="bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/10">
-                <div class="bg-[#1b202b] px-6 py-3 flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full bg-primary pulse-dot shadow-[0_0_8px_#00d4ff]"></div>
-                        <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-primary">Live Neural Inference Stream</h3>
+            <section class="reveal">
+                <div class="card-premium overflow-hidden">
+                    <div class="p-6 border-b border-white/5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <h3 class="text-title">Live Neural Inference Stream</h3>
+                                <span class="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20">
+                                    <span class="status-dot status-live"></span>
+                                    <span class="text-xs text-secondary tabular">
+                                        <span id="throughput">412</span> MB/s
+                                    </span>
+                                </span>
+                                <span class="text-xs text-text-muted">
+                                    Latency: <span class="tabular" id="latency">1.2</span>ms
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex gap-4">
-                        <span class="text-[10px] font-mono text-on-surface-variant">THROUGHPUT: <span id="throughput">412</span> MB/S</span>
-                        <span class="text-[10px] font-mono text-on-surface-variant">LATENCY: <span id="latency">1.2</span>MS</span>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-white/5">
+                                <tr class="text-left text-xs text-text-muted uppercase tracking-wider">
+                                    <th class="px-6 py-4 font-medium">Timestamp</th>
+                                    <th class="px-6 py-4 font-medium">Source IP</th>
+                                    <th class="px-6 py-4 font-medium">Port</th>
+                                    <th class="px-6 py-4 font-medium">Protocol</th>
+                                    <th class="px-6 py-4 font-medium">RF Label</th>
+                                    <th class="px-6 py-4 font-medium">Confidence</th>
+                                    <th class="px-6 py-4 font-medium">Verdict</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5" id="inference-stream">
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left font-mono text-xs">
-                        <thead>
-                            <tr class="border-b border-outline-variant/10 text-on-surface-variant/50">
-                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Timestamp</th>
-                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Source IP</th>
-                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Port</th>
-                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Protocol</th>
-                                <th class="px-6 py-3 font-normal uppercase tracking-wider">RF Label</th>
-                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Confidence</th>
-                                <th class="px-6 py-3 font-normal uppercase tracking-wider">Verdict</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-outline-variant/5" id="inference-stream">
-                            <!-- Generated by JS -->
-                        </tbody>
-                    </table>
                 </div>
             </section>
         </div>
 
         <!-- ==================== INVESTIGATION PAGE ==================== -->
-        <div id="page-investigation" class="page px-8 py-8 space-y-8">
+        <div id="page-investigation" class="page">
+            <!-- Hero Section -->
+            <section class="mb-16 pt-8">
+                <div class="reveal">
+                    <span class="text-eyebrow mb-6">
+                        <i class="ph-light ph-magnifying-glass text-xs"></i>
+                        Threat Intelligence
+                    </span>
+                    <h1 class="text-headline mt-4 mb-4">
+                        Investigation<br/>
+                        <span class="text-text-secondary">Hub</span>
+                    </h1>
+                </div>
+            </section>
+            
             <!-- IP Lookup Search -->
-            <section class="mb-10">
-                <div class="max-w-4xl mx-auto">
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                            <span class="material-symbols-outlined text-primary-container">search</span>
+            <section class="mb-16 reveal">
+                <div class="card-premium p-8">
+                    <div class="flex flex-col lg:flex-row gap-6">
+                        <div class="flex-1 relative">
+                            <i class="ph-light ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-xl text-text-muted"></i>
+                            <input id="ip-lookup-input" class="input-premium pl-14 text-xl text-white" placeholder="Enter IP address to investigate..." type="text" onkeypress="if(event.key==='Enter')lookupIP()"/>
                         </div>
-                        <input id="ip-lookup-input" class="block w-full pl-16 pr-48 py-6 bg-surface-container-low border-none rounded-xl text-xl font-mono text-on-surface focus:ring-1 focus:ring-primary-container transition-all" placeholder="ENTER IP ADDRESS..." type="text"/>
-                        <div class="absolute inset-y-0 right-3 flex items-center gap-2">
-                            <div class="hidden md:flex items-center px-3 py-1.5 bg-surface-variant rounded text-[10px] font-bold text-outline uppercase tracking-tighter">
-                                VirusTotal API Connected
+                        <div class="flex items-center gap-4">
+                            <div class="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 border border-secondary/20">
+                                <span class="status-dot status-live"></span>
+                                <span class="text-xs text-secondary">VirusTotal Connected</span>
                             </div>
-                            <button onclick="lookupIP()" class="px-6 py-3 bg-primary-container text-on-primary font-bold rounded-lg hover:brightness-110 active:scale-95 transition-all">
-                                LOOKUP IP
+                            <button onclick="lookupIP()" class="btn-primary">
+                                Lookup IP
+                                <span class="btn-arrow">
+                                    <i class="ph-light ph-arrow-right text-xs"></i>
+                                </span>
                             </button>
                         </div>
                     </div>
-                    <div class="flex gap-4 mt-4 px-2">
-                        <span class="text-[10px] text-outline font-bold uppercase tracking-widest">Connected Sources:</span>
-                        <div class="flex gap-3">
-                            <span class="text-[10px] text-primary flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-primary"></span> ABUSEIPDB</span>
-                            <span class="text-[10px] text-primary flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-primary"></span> VIRUSTOTAL</span>
-                            <span class="text-[10px] text-primary flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-primary"></span> ALIENVAULT</span>
-                        </div>
+                    <div class="flex flex-wrap items-center gap-6 mt-6 pt-6 border-t border-white/5">
+                        <span class="text-label">Connected Sources:</span>
+                        <span class="flex items-center gap-2 text-sm text-text-secondary">
+                            <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                            AbuseIPDB
+                        </span>
+                        <span class="flex items-center gap-2 text-sm text-text-secondary">
+                            <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                            VirusTotal
+                        </span>
+                        <span class="flex items-center gap-2 text-sm text-text-secondary">
+                            <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                            AlienVault OTX
+                        </span>
                     </div>
                 </div>
             </section>
-
+            
             <!-- TI Results -->
-            <section id="ti-results" class="hidden">
-                <div class="grid grid-cols-12 gap-6">
+            <section id="ti-results" class="hidden mb-16">
+                <div class="bento-grid gap-6">
                     <!-- Threat Intelligence Panel -->
-                    <div class="col-span-12 lg:col-span-8 bg-surface-container-low rounded-xl p-8 flex items-start gap-8 relative overflow-hidden">
-                        <div class="relative flex-shrink-0">
-                            <div class="w-40 h-40 rounded-full border-[10px] border-surface-variant flex items-center justify-center">
-                                <div class="text-center">
-                                    <span class="block text-5xl font-black font-headline text-error" id="ti-score">0</span>
-                                    <span class="text-[10px] text-outline uppercase font-bold tracking-widest">Threat Score</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex justify-between items-start mb-6">
-                                <div>
-                                    <h3 class="font-headline text-2xl font-bold text-on-surface">Intelligence Summary</h3>
-                                    <p class="font-mono text-sm text-error mt-1 uppercase font-bold tracking-tight flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">warning</span>
-                                        Reputation: <span id="ti-reputation">UNKNOWN</span>
-                                    </p>
-                                </div>
-                                <div class="bg-surface-variant px-3 py-1 rounded text-[10px] font-mono text-outline uppercase">
-                                    Last Check: <span id="ti-last-check">N/A</span>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-surface-container p-4 rounded-lg border-l-2 border-error">
-                                    <p class="text-[10px] font-bold text-outline uppercase mb-2">Abuse Score</p>
-                                    <div class="flex items-end justify-between">
-                                        <span class="text-xl font-headline font-bold" id="ti-abuse-score">0%</span>
-                                        <span class="text-[10px] font-mono text-error" id="ti-abuse-reports">0 Reports</span>
+                    <div class="bento-span-8 reveal">
+                        <div class="card-premium p-8">
+                            <div class="flex flex-col lg:flex-row gap-8">
+                                <!-- Threat Score Circle -->
+                                <div class="relative flex-shrink-0">
+                                    <div class="w-40 h-40 rounded-full border-4 border-white/10 flex items-center justify-center bg-white/5">
+                                        <div class="text-center">
+                                            <span class="block text-4xl font-bold text-error" id="ti-score">0</span>
+                                            <span class="text-xs text-text-muted uppercase tracking-wider">Threat Score</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="bg-surface-container p-4 rounded-lg border-l-2 border-tertiary">
-                                    <p class="text-[10px] font-bold text-outline uppercase mb-2">VT Detections</p>
-                                    <div class="flex items-end justify-between">
-                                        <span class="text-xl font-headline font-bold" id="ti-vt-detections">0/0</span>
-                                        <span class="text-[10px] font-mono text-tertiary">Engines</span>
+                                <!-- Info -->
+                                <div class="flex-1">
+                                    <div class="flex items-start justify-between mb-6">
+                                        <div>
+                                            <h3 class="text-xl font-bold mb-2">Intelligence Summary</h3>
+                                            <div class="flex items-center gap-2 text-error">
+                                                <i class="ph-light ph-warning-circle text-sm"></i>
+                                                <span class="text-sm">Reputation: <strong id="ti-reputation">UNKNOWN</strong></span>
+                                            </div>
+                                        </div>
+                                        <span class="px-3 py-1 rounded-full bg-white/5 text-xs text-text-muted">
+                                            Last Check: <span id="ti-last-check">N/A</span>
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="p-4 rounded-xl bg-error/10 border border-error/20">
+                                            <p class="text-label mb-2">Abuse Score</p>
+                                            <div class="flex items-end justify-between">
+                                                <span class="text-2xl font-bold" id="ti-abuse-score">0%</span>
+                                                <span class="text-xs text-error" id="ti-abuse-reports">0 Reports</span>
+                                            </div>
+                                        </div>
+                                        <div class="p-4 rounded-xl bg-accent-amber/10 border border-accent-amber/20">
+                                            <p class="text-label mb-2">VT Detections</p>
+                                            <div class="flex items-end justify-between">
+                                                <span class="text-2xl font-bold" id="ti-vt-detections">0/0</span>
+                                                <span class="text-xs text-accent-amber">Engines</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <!-- IP Info -->
-                    <div class="col-span-12 lg:col-span-4 bg-surface-container-low rounded-xl p-6">
-                        <h3 class="text-xs font-bold text-outline uppercase tracking-widest mb-4">IP Information</h3>
-                        <div class="space-y-3">
-                            <div class="flex justify-between border-b border-outline-variant/10 pb-2">
-                                <span class="text-[10px] text-outline uppercase">IP Address</span>
-                                <span class="text-[10px] font-mono text-primary" id="ti-ip">-</span>
-                            </div>
-                            <div class="flex justify-between border-b border-outline-variant/10 pb-2">
-                                <span class="text-[10px] text-outline uppercase">Country</span>
-                                <span class="text-[10px] font-mono" id="ti-country">-</span>
-                            </div>
-                            <div class="flex justify-between border-b border-outline-variant/10 pb-2">
-                                <span class="text-[10px] text-outline uppercase">ISP</span>
-                                <span class="text-[10px] font-mono" id="ti-isp">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-[10px] text-outline uppercase">Type</span>
-                                <span class="text-[10px] font-mono" id="ti-type">-</span>
+                    <div class="bento-span-4 reveal reveal-delay-100">
+                        <div class="card-premium p-6 h-full">
+                            <h4 class="text-title mb-6">IP Information</h4>
+                            <div class="space-y-4">
+                                <div class="flex justify-between py-3 border-b border-white/5">
+                                    <span class="text-label">IP Address</span>
+                                    <span class="font-mono text-primary" id="ti-ip">-</span>
+                                </div>
+                                <div class="flex justify-between py-3 border-b border-white/5">
+                                    <span class="text-label">Country</span>
+                                    <span class="font-mono" id="ti-country">-</span>
+                                </div>
+                                <div class="flex justify-between py-3 border-b border-white/5">
+                                    <span class="text-label">ISP</span>
+                                    <span class="font-mono" id="ti-isp">-</span>
+                                </div>
+                                <div class="flex justify-between py-3">
+                                    <span class="text-label">Type</span>
+                                    <span class="font-mono" id="ti-type">-</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
-
+            
             <!-- Global Threat Map -->
-            <section class="bg-surface-container-low rounded-xl p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">map</span>
-                        Global Threat Map
-                    </h3>
-                    <div class="flex items-center gap-4">
-                        <span class="text-[10px] font-mono text-outline" id="map-stats">Loading...</span>
-                        <button onclick="refreshThreatMap()" class="px-3 py-1.5 bg-surface-container hover:bg-surface-variant text-[10px] font-bold rounded border border-outline-variant/20 transition-colors flex items-center gap-1">
-                            <span class="material-symbols-outlined text-xs">refresh</span>
+            <section class="reveal">
+                <div class="card-premium p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-4">
+                            <h3 class="text-title">Global Threat Map</h3>
+                            <span class="text-sm text-text-secondary" id="map-stats">Loading...</span>
+                        </div>
+                        <button onclick="refreshThreatMap()" class="btn-ghost">
+                            <i class="ph-light ph-arrows-clockwise text-sm"></i>
                             Refresh
                         </button>
                     </div>
-                </div>
-                <div class="grid grid-cols-12 gap-6">
-                    <!-- Map Container -->
-                    <div class="col-span-12 lg:col-span-8">
-                        <div id="threat-map" class="w-full h-[400px] bg-surface rounded-lg border border-outline-variant/10 relative overflow-hidden">
-                            <div class="absolute inset-0 flex items-center justify-center text-outline">
-                                <div class="text-center">
-                                    <span class="material-symbols-outlined text-4xl">public</span>
-                                    <p class="text-xs mt-2">Loading map...</p>
+                    <div class="bento-grid gap-6">
+                        <!-- Map Container -->
+                        <div class="bento-span-8">
+                            <div id="threat-map" class="w-full h-[400px] rounded-xl bg-void border border-white/5 relative overflow-hidden">
+                                <div class="absolute inset-0 flex items-center justify-center text-text-muted">
+                                    <div class="text-center">
+                                        <i class="ph-light ph-globe text-4xl mb-2"></i>
+                                        <p class="text-sm">Loading map...</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <!-- Country Stats -->
-                    <div class="col-span-12 lg:col-span-4 space-y-4">
-                        <!-- Top Attack Country -->
-                        <div class="bg-surface-container p-4 rounded-lg border-l-2 border-error">
-                            <p class="text-[10px] text-outline uppercase mb-1">Top Attack Source</p>
-                            <div class="flex items-center gap-3">
-                                <span class="text-3xl" id="top-country-flag">🌍</span>
-                                <div>
-                                    <p class="text-lg font-bold font-headline" id="top-country-name">-</p>
-                                    <p class="text-[10px] font-mono text-error" id="top-country-attacks">0 attacks</p>
+                        <!-- Country Stats -->
+                        <div class="bento-span-4 space-y-4">
+                            <!-- Top Attack Country -->
+                            <div class="p-4 rounded-xl bg-error/10 border border-error/20">
+                                <p class="text-label mb-2">Top Attack Source</p>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl" id="top-country-flag">🌍</span>
+                                    <div>
+                                        <p class="text-lg font-bold" id="top-country-name">-</p>
+                                        <p class="text-xs text-error" id="top-country-attacks">0 attacks</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- Threat Distribution -->
-                        <div class="bg-surface-container p-4 rounded-lg">
-                            <p class="text-[10px] text-outline uppercase mb-3">Threat Distribution</p>
-                            <div class="space-y-3" id="country-threat-list">
-                                <!-- Generated by JS -->
-                            </div>
-                        </div>
-                        <!-- Attack Summary -->
-                        <div class="bg-surface-container p-4 rounded-lg">
-                            <p class="text-[10px] text-outline uppercase mb-3">Map Summary</p>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-2xl font-bold font-headline text-primary" id="map-total-attacks">0</p>
-                                    <p class="text-[10px] text-outline">Total Attacks</p>
+                            <!-- Threat Distribution -->
+                            <div class="card-premium p-4">
+                                <p class="text-label mb-4">Threat Distribution</p>
+                                <div class="space-y-3" id="country-threat-list">
+                                    <!-- Generated by JS -->
                                 </div>
-                                <div>
-                                    <p class="text-2xl font-bold font-headline text-primary" id="map-unique-ips">0</p>
-                                    <p class="text-[10px] text-outline">Unique IPs</p>
+                            </div>
+                            <!-- Attack Summary -->
+                            <div class="card-premium p-4">
+                                <p class="text-label mb-4">Map Summary</p>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-2xl font-bold tabular text-primary" id="map-total-attacks">0</p>
+                                        <p class="text-xs text-text-muted">Total Attacks</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-2xl font-bold tabular text-primary" id="map-unique-ips">0</p>
+                                        <p class="text-xs text-text-muted">Unique IPs</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
-
-            <!-- Recent Lookups History -->
-            <section class="bg-surface-container-low rounded-xl p-6">
-                <h3 class="text-xs font-black uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">history</span>
-                    Recent Lookups
-                </h3>
-                <div class="space-y-3" id="lookup-history">
-                    <!-- Generated by JS -->
+            
+            <!-- Recent Lookups -->
+            <section class="mt-16 reveal">
+                <div class="card-premium p-6">
+                    <h3 class="text-title mb-6 flex items-center gap-3">
+                        <i class="ph-light ph-clock-counter-clockwise text-xl text-primary"></i>
+                        Recent Lookups
+                    </h3>
+                    <div class="space-y-3" id="lookup-history">
+                        <!-- Generated by JS -->
+                    </div>
                 </div>
             </section>
         </div>
 
         <!-- ==================== SETTINGS PAGE ==================== -->
-        <div id="page-settings" class="page px-8 py-8 space-y-8">
-            <!-- Header -->
-            <section class="flex justify-between items-end mb-8">
-                <div>
-                    <h1 class="text-4xl font-bold font-headline text-primary tracking-tight">System Configuration</h1>
-                    <p class="text-on-surface-variant font-body max-w-xl mt-2">Manage system parameters, blocklists, and notification settings.</p>
+        <div id="page-settings" class="page">
+            <!-- Hero Section -->
+            <section class="mb-16 pt-8">
+                <div class="reveal">
+                    <span class="text-eyebrow mb-6">
+                        <i class="ph-light ph-gear text-xs"></i>
+                        Configuration
+                    </span>
+                    <h1 class="text-headline mt-4 mb-4">
+                        System<br/>
+                        <span class="text-text-secondary">Settings</span>
+                    </h1>
+                    <p class="text-body max-w-lg">
+                        Manage system parameters, blocklists, and notification settings.
+                    </p>
                 </div>
             </section>
-
-            <section class="grid grid-cols-12 gap-6">
-                <!-- Left Column -->
-                <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+            
+            <section class="mb-16">
+                <div class="bento-grid gap-6">
                     <!-- System Information -->
-                    <div class="bg-surface-container-low p-6 rounded-lg">
-                        <h3 class="text-sm font-bold text-primary flex items-center gap-2 uppercase tracking-widest mb-6">
-                            <span class="material-symbols-outlined text-lg">analytics</span>
-                            System Information
-                        </h3>
-                        <div class="space-y-4">
-                            <div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
-                                <span class="text-[11px] text-outline">Model Status</span>
-                                <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-sm border border-primary/20" id="model-status">LOADING...</span>
-                            </div>
-                            <div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
-                                <span class="text-[11px] text-outline">API Health</span>
-                                <div class="flex items-center gap-2">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
-                                    <span class="text-[10px] font-mono text-on-surface uppercase" id="api-health">Checking...</span>
+                    <div class="bento-span-4 reveal">
+                        <div class="card-premium p-6 h-full">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <i class="ph-light ph-chart-line-up text-xl text-primary"></i>
                                 </div>
+                                <h3 class="text-lg font-bold">System Information</h3>
                             </div>
-                            <div class="flex justify-between items-center py-2">
-                                <span class="text-[11px] text-outline">Server Uptime</span>
-                                <span class="text-[11px] font-mono text-on-surface" id="server-uptime">-</span>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center py-3 border-b border-white/5">
+                                    <span class="text-sm text-text-secondary">Model Status</span>
+                                    <span class="px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-medium" id="model-status">LOADING...</span>
+                                </div>
+                                <div class="flex justify-between items-center py-3 border-b border-white/5">
+                                    <span class="text-sm text-text-secondary">API Health</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="status-dot status-live"></span>
+                                        <span class="text-sm" id="api-health">Checking...</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center py-3">
+                                    <span class="text-sm text-text-secondary">Server Uptime</span>
+                                    <span class="font-mono tabular" id="server-uptime">-</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-
+                    
                     <!-- Threshold Configuration -->
-                    <div class="bg-surface-container-low p-6 rounded-lg">
-                        <h3 class="text-sm font-bold text-primary flex items-center gap-2 uppercase tracking-widest mb-6">
-                            <span class="material-symbols-outlined text-lg">tune</span>
-                            Threshold Configuration
-                        </h3>
-                        <div class="space-y-8">
-                            <div>
-                                <div class="flex justify-between items-end mb-2">
-                                    <label class="text-[11px] text-on-surface font-medium">Autoencoder Threshold</label>
-                                    <span class="text-[12px] font-mono text-primary-container" id="ae-threshold-value">0.20</span>
+                    <div class="bento-span-8 reveal reveal-delay-100">
+                        <div class="card-premium p-6 h-full">
+                            <div class="flex items-center gap-3 mb-8">
+                                <div class="w-12 h-12 rounded-xl bg-accent-warm/10 flex items-center justify-center">
+                                    <i class="ph-light ph-sliders text-xl text-accent-warm"></i>
                                 </div>
-                                <input id="ae-threshold-slider" max="1" min="0.01" step="0.01" type="range" value="0.20" class="w-full"/>
-                                <p class="text-[9px] text-outline mt-2 italic">Sensitivity to packet anomaly scores.</p>
+                                <h3 class="text-lg font-bold">Threshold Configuration</h3>
                             </div>
-                            <div>
-                                <div class="flex justify-between items-end mb-2">
-                                    <label class="text-[11px] text-on-surface font-medium">IF Contamination</label>
-                                    <span class="text-[12px] font-mono text-primary-container" id="if-contamination-value">0.10</span>
+                            <div class="space-y-8">
+                                <div>
+                                    <div class="flex justify-between items-end mb-3">
+                                        <label class="text-sm font-medium">Autoencoder Threshold</label>
+                                        <span class="font-mono text-primary tabular" id="ae-threshold-value">0.20</span>
+                                    </div>
+                                    <input id="ae-threshold-slider" max="1" min="0.01" step="0.01" type="range" value="0.20" class="slider-premium w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"/>
+                                    <p class="text-xs text-text-muted mt-2">Sensitivity to packet anomaly scores.</p>
                                 </div>
-                                <input id="if-contamination-slider" max="0.5" min="0.01" step="0.01" type="range" value="0.10" class="w-full"/>
-                                <p class="text-[9px] text-outline mt-2 italic">Expected proportion of outliers.</p>
+                                <div>
+                                    <div class="flex justify-between items-end mb-3">
+                                        <label class="text-sm font-medium">IF Contamination</label>
+                                        <span class="font-mono text-primary tabular" id="if-contamination-value">0.10</span>
+                                    </div>
+                                    <input id="if-contamination-slider" max="0.5" min="0.01" step="0.01" type="range" value="0.10" class="slider-premium w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer"/>
+                                    <p class="text-xs text-text-muted mt-2">Expected proportion of outliers.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Right Column -->
-                <div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
-                    <!-- Blocked IPs Management -->
-                    <div class="bg-surface-container-low p-6 rounded-lg">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-sm font-bold text-primary flex items-center gap-2 uppercase tracking-widest">
-                                <span class="material-symbols-outlined text-lg">block</span>
-                                Blocked IPs Management
-                            </h3>
-                            <div class="flex gap-2">
-                                <div class="flex items-center bg-surface-container px-3 rounded border border-outline-variant/20">
-                                    <input id="new-block-ip" class="bg-transparent border-none text-[10px] text-on-surface focus:ring-0 p-1 placeholder:text-outline/40 font-mono w-32" placeholder="IP Address..." type="text"/>
-                                </div>
-                                <button onclick="blockIP()" class="px-4 py-1.5 bg-primary text-on-primary text-[10px] font-bold rounded uppercase tracking-wider hover:bg-primary/80">Add</button>
+            </section>
+            
+            <!-- Blocked IPs Management -->
+            <section class="reveal">
+                <div class="card-premium p-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center">
+                                <i class="ph-light ph-shield-ban text-xl text-error"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold">Blocked IPs</h3>
+                                <p class="text-sm text-text-secondary">Manage permanently blocked IP addresses</p>
                             </div>
                         </div>
-                        <div class="overflow-hidden">
-                            <table class="w-full border-collapse">
-                                <thead>
-                                    <tr class="text-left border-b border-outline-variant/10 text-[10px] text-outline uppercase tracking-widest">
-                                        <th class="pb-3 font-medium">Target IP</th>
-                                        <th class="pb-3 font-medium">Reason</th>
-                                        <th class="pb-3 font-medium">Status</th>
-                                        <th class="pb-3 font-medium text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-xs" id="blocked-ips-table">
-                                    <!-- Generated by JS -->
-                                </tbody>
-                            </table>
+                        <div class="flex items-center gap-3 relative z-10">
+                            <input id="new-block-ip" class="input-premium w-64 px-4 py-3 text-white text-sm font-mono" placeholder="Enter IP address..." type="text"/>
+                            <button onclick="blockIP()" class="btn-primary relative z-10">
+                                Add IP
+                                <span class="btn-arrow">
+                                    <i class="ph-light ph-plus text-xs"></i>
+                                </span>
+                            </button>
                         </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-left text-xs text-text-muted uppercase tracking-wider border-b border-white/5">
+                                    <th class="px-4 py-3 font-medium">Target IP</th>
+                                    <th class="px-4 py-3 font-medium">Reason</th>
+                                    <th class="px-4 py-3 font-medium">Status</th>
+                                    <th class="px-4 py-3 font-medium text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5" id="blocked-ips-table">
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
         </div>
     </main>
-
+    
     <!-- Footer -->
-    <footer class="fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-4 py-1 bg-[#171b27] border-t border-[#1b202b] h-8">
+    <footer class="fixed bottom-0 left-0 w-full z-40 flex justify-between items-center px-6 py-3 bg-void/80 backdrop-blur-xl border-t border-white/5 pointer-events-none">
         <div class="flex items-center gap-6">
-            <span class="font-mono text-[10px] tracking-widest uppercase text-[#dee2f2]/40">System Time: <span id="system-time">--:--:--</span></span>
-            <div class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
-                <span class="font-mono text-[10px] tracking-widest uppercase text-[#00d4ff]">API: <span id="api-status">Connecting</span></span>
-            </div>
+            <span class="font-mono text-xs text-text-muted tabular">System Time: <span id="system-time">--:--:--</span></span>
+            <span class="flex items-center gap-2">
+                <span class="status-dot status-live"></span>
+                <span class="font-mono text-xs text-secondary">API: <span id="api-status">Connecting</span></span>
+            </span>
         </div>
-        <div class="flex gap-4">
-            <span class="font-mono text-[10px] tracking-widest uppercase text-[#dee2f2]/40">v2.4.0-stable</span>
+        <div class="flex items-center gap-6">
+            <a href="#" class="font-mono text-xs text-text-muted hover:text-white transition-colors">Privacy</a>
+            <a href="#" class="font-mono text-xs text-text-muted hover:text-white transition-colors">Terms</a>
+            <span class="font-mono text-xs text-text-muted">v2.4.0-stable</span>
         </div>
     </footer>
-
+    
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-12 right-4 z-50 transform translate-x-full transition-transform duration-300">
-        <div class="bg-surface-container border border-outline-variant/20 rounded-lg p-4 shadow-xl flex items-center gap-3">
-            <span class="material-symbols-outlined text-primary" id="toast-icon">check_circle</span>
-            <span class="text-xs font-medium" id="toast-message">Success</span>
+    <div id="toast" class="fixed bottom-12 right-4 z-[60] transform translate-x-full transition-transform duration-300 spring-hover">
+        <div class="card-premium p-4 flex items-center gap-3 relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-primary-container/5 to-transparent"></div>
+            <i class="ph-light ph-check-circle text-xl text-primary relative z-10" id="toast-icon"></i>
+            <span class="text-xs font-medium relative z-10" id="toast-message">Success</span>
         </div>
     </div>
 
@@ -910,13 +1927,13 @@
             return date.toLocaleTimeString('en-US', { hour12: false }) + '.' + date.getMilliseconds().toString().padStart(3, '0');
         }
 
-        function showToast(message, icon = 'check_circle', duration = 3000) {
+        function showToast(message, icon = 'check-circle', duration = 3000) {
             const toast = document.getElementById('toast');
             const toastMessage = document.getElementById('toast-message');
             const toastIcon = document.getElementById('toast-icon');
             
             toastMessage.textContent = message;
-            toastIcon.textContent = icon;
+            toastIcon.className = `ph-light ph-${icon} text-xl`;
             toast.classList.remove('translate-x-full');
             
             setTimeout(() => {
@@ -927,7 +1944,7 @@
         function getVerdictColor(verdict) {
             switch(verdict) {
                 case 'Attack': return 'error';
-                case 'Suspicious': return 'tertiary-container';
+                case 'Suspicious': return 'accent-amber';
                 case 'Benign': return 'primary-container';
                 default: return 'outline';
             }
@@ -935,10 +1952,10 @@
 
         function getVerdictBgColor(verdict) {
             switch(verdict) {
-                case 'Attack': return 'bg-error-container text-error';
-                case 'Suspicious': return 'bg-tertiary-container/20 text-tertiary-container';
-                case 'Benign': return 'bg-secondary-container/30 text-secondary';
-                default: return 'bg-surface-variant text-outline';
+                case 'Attack': return 'bg-error/20 text-error';
+                case 'Suspicious': return 'bg-accent-amber/20 text-accent-amber';
+                case 'Benign': return 'bg-secondary/20 text-secondary';
+                default: return 'bg-white/10 text-text-muted';
             }
         }
 
@@ -969,24 +1986,49 @@
         // ==================== NAVIGATION ====================
         function navigateTo(page) {
             // Hide all pages
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => {
+                p.classList.remove('active');
+                p.style.display = 'none';
+            });
             document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
             
             // Show selected page
             const pageEl = document.getElementById(`page-${page}`);
             if (pageEl) {
-                pageEl.classList.add('active');
-                pageEl.classList.remove('hidden');
+                pageEl.style.display = 'block';
+                setTimeout(() => {
+                    pageEl.classList.add('active');
+                    // Trigger reveal animations
+                    initScrollAnimations();
+                }, 10);
             }
             
             // Update nav
-            const navLink = document.querySelector(`[data-page="${page}"]`);
+            const navLink = document.querySelector(`.nav-link[data-page="${page}"]`);
             if (navLink) navLink.classList.add('active');
 
             // Load map when visiting investigation page
             if (page === 'investigation' && !mapInitialized) {
-                setTimeout(loadThreatMap, 100); // Small delay to ensure DOM is ready
+                setTimeout(loadThreatMap, 300);
             }
+        }
+        
+        // ==================== SCROLL ANIMATIONS ====================
+        function initScrollAnimations() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            });
+            
+            document.querySelectorAll('.reveal').forEach(el => {
+                observer.observe(el);
+            });
         }
 
         // ==================== DASHBOARD DATA ====================
@@ -1018,11 +2060,11 @@
             const attackRate = stats.attack_rate?.toFixed(1) || '0';
             const trend = document.getElementById('kpi-trend');
             if (parseFloat(attackRate) > 50) {
-                trend.innerHTML = `<span class="material-symbols-outlined text-[10px]">trending_up</span> ${attackRate}%`;
+                trend.innerHTML = `<i class="ph-light ph-trend-up text-xs"></i> ${attackRate}%`;
                 trend.classList.add('text-error');
-                trend.classList.remove('text-primary');
+                trend.classList.remove('text-secondary');
             } else {
-                trend.innerHTML = `<span class="material-symbols-outlined text-[10px]">trending_down</span> ${attackRate}%`;
+                trend.innerHTML = `<i class="ph-light ph-trend-down text-xs"></i> ${attackRate}%`;
             }
             
             document.getElementById('active-alerts-count').textContent = (stats.attacks + stats.suspicious)?.toLocaleString() || '0';
@@ -1034,7 +2076,7 @@
             const fullTable = document.getElementById('full-alerts-table');
             
             if (!alerts || alerts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-outline text-sm">No alerts yet. Run attack simulation to generate alerts.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-text-muted text-sm">No alerts yet. Run attack simulation to generate alerts.</td></tr>`;
                 fullTable.innerHTML = tbody.innerHTML;
                 return;
             }
@@ -1046,28 +2088,34 @@
                 const confidence = ((alert.combined_confidence || 0) * 100).toFixed(1);
                 
                 const row = `
-                    <tr class="hover:bg-surface-variant/40 transition-colors">
-                        <td class="px-6 py-4 font-mono text-xs ${verdict === 'Attack' ? 'text-error' : 'text-primary'}">${alert.src_ip}</td>
-                        ${showAll ? `<td class="px-6 py-4 font-mono text-xs">${alert.dst_ip}</td>` : ''}
-                        ${showAll ? `<td class="px-6 py-4 font-mono text-xs">${alert.dst_port}</td>` : ''}
-                        ${showAll ? `<td class="px-6 py-4"><span class="px-2 py-0.5 bg-surface-container text-[10px] rounded">${alert.protocol === 6 ? 'TCP' : alert.protocol === 17 ? 'UDP' : 'OTHER'}</span></td>` : ''}
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-6 py-4 font-mono text-sm ${verdict === 'Attack' ? 'text-error' : 'text-primary'}">${alert.src_ip}</td>
+                        ${showAll ? `<td class="px-6 py-4 font-mono text-sm">${alert.dst_ip}</td>` : ''}
+                        ${showAll ? `<td class="px-6 py-4 font-mono text-sm">${alert.dst_port}</td>` : ''}
+                        ${showAll ? `<td class="px-6 py-4"><span class="px-2.5 py-1 bg-white/5 text-xs rounded-full">${alert.protocol === 6 ? 'TCP' : alert.protocol === 17 ? 'UDP' : 'OTHER'}</span></td>` : ''}
                         <td class="px-6 py-4">
-                            <span class="px-2 py-1 ${bgClass} text-[10px] font-bold rounded uppercase">${alert.rf_label || verdict}</span>
+                            <span class="px-2.5 py-1 ${bgClass} text-xs font-medium rounded-full">${alert.rf_label || verdict}</span>
                         </td>
-                        ${!showAll ? `<td class="px-6 py-4"><span class="px-2 py-1 ${bgClass} text-[10px] font-bold rounded uppercase">${verdict}</span></td>` : ''}
-                        <td class="px-6 py-4 w-24">
-                            <div class="flex items-center gap-2">
-                                <div class="flex-1 h-1 bg-surface-variant rounded-full overflow-hidden">
+                        ${!showAll ? `<td class="px-6 py-4"><span class="px-2.5 py-1 ${bgClass} text-xs font-medium rounded-full">${verdict}</span></td>` : ''}
+                        <td class="px-6 py-4 w-32">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                                     <div class="h-full bg-${color} transition-all" style="width: ${confidence}%"></div>
                                 </div>
-                                <span class="text-[10px] font-mono">${confidence}%</span>
+                                <span class="text-xs font-mono tabular w-12 text-right">${confidence}%</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <button onclick="investigateIP('${alert.src_ip}')" class="px-2 py-1 bg-primary-container/10 text-primary text-[10px] font-bold border border-primary-container/30 rounded hover:bg-primary-container/20 mr-2" title="Investigate IP">
-                                <span class="material-symbols-outlined text-xs">search</span>
-                            </button>
-                            <button onclick="blockIP('${alert.src_ip}')" class="px-2 py-1 bg-error/10 text-error text-[10px] font-bold border border-error/30 rounded hover:bg-error/20">Block</button>
+                            <div class="flex items-center justify-end gap-2">
+                                <button onclick="blockIP('${alert.src_ip}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-error/10 hover:bg-error/20 text-error text-xs font-medium rounded-full transition-all spring-hover" title="Block IP">
+                                    <i class="ph-light ph-shield-slash text-xs"></i>
+                                    Block
+                                </button>
+                                <button onclick="investigateIP('${alert.src_ip}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-xs font-medium rounded-full transition-all spring-hover" title="Investigate IP">
+                                    <i class="ph-light ph-magnifying-glass text-xs"></i>
+                                    Investigate
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -1108,7 +2156,7 @@
                 legend += `
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full" style="background: ${colors[label] || '#666'}"></span>
-                        <span class="text-[10px] font-mono text-on-surface-variant">${label} ${percent.toFixed(1)}%</span>
+                        <span class="text-xs font-mono text-text-secondary">${label} ${percent.toFixed(1)}%</span>
                     </div>
                 `;
                 
@@ -1125,7 +2173,7 @@
         function updateTrafficChart(timeline) {
             const container = document.getElementById('traffic-chart');
             if (!timeline || !timeline.timestamps) {
-                container.innerHTML = '<div class="text-center text-outline w-full">No traffic data</div>';
+                container.innerHTML = '<div class="text-center text-text-muted w-full">No traffic data</div>';
                 return;
             }
 
@@ -1138,9 +2186,9 @@
                 const height = (total / max) * 100;
                 const attackRatio = (timeline.attacks[i] || 0) / total;
                 
-                let color = 'bg-primary-container/40';
+                let color = 'bg-primary/40';
                 if (attackRatio > 0.5) color = 'bg-error/40';
-                else if (attackRatio > 0.2) color = 'bg-tertiary-container/40';
+                else if (attackRatio > 0.2) color = 'bg-accent-amber/40';
                 
                 bars += `<div class="w-full ${color} rounded-t transition-all hover:opacity-80" style="height: ${Math.max(height, 5)}%"></div>`;
             }
@@ -1151,7 +2199,7 @@
         function updateTopAttackers(attackers) {
             const container = document.getElementById('top-attackers');
             if (!attackers || attackers.length === 0) {
-                container.innerHTML = '<div class="text-[10px] text-outline">No attackers detected</div>';
+                container.innerHTML = '<div class="text-xs text-text-muted">No attackers detected</div>';
                 return;
             }
 
@@ -1160,10 +2208,10 @@
                 <div>
                     <div class="flex justify-between text-[10px] mb-1.5">
                         <span class="font-mono text-primary">${a.src_ip}</span>
-                        <span class="text-outline">${a.alert_count} alerts</span>
+                        <span class="text-text-secondary">${a.alert_count} alerts</span>
                     </div>
-                    <div class="w-full h-1 bg-surface-variant rounded-full overflow-hidden">
-                        <div class="h-full bg-primary-container" style="width: ${(a.alert_count / max) * 100}%"></div>
+                    <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div class="h-full bg-primary" style="width: ${(a.alert_count / max) * 100}%"></div>
                     </div>
                 </div>
             `).join('');
@@ -1174,27 +2222,27 @@
             const tableContainer = document.getElementById('blocked-ips-table');
             
             if (!ips || ips.length === 0) {
-                listContainer.innerHTML = '<div class="text-[10px] text-outline">No blocked IPs</div>';
-                tableContainer.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-outline text-xs">No blocked IPs</td></tr>';
+                listContainer.innerHTML = '<div class="text-xs text-text-muted">No blocked IPs</div>';
+                tableContainer.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-text-muted text-xs">No blocked IPs</td></tr>';
                 return;
             }
 
             const rows = ips.map(ip => `
-                <div class="flex items-center justify-between p-2 bg-surface-container/40 rounded border border-outline-variant/10">
-                    <span class="font-mono text-xs text-error">${ip}</span>
-                    <span class="text-[9px] font-mono px-2 py-0.5 bg-error-container/20 text-error font-bold rounded">PERMANENT</span>
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
+                    <span class="font-mono text-sm text-error">${ip}</span>
+                    <span class="text-xs font-medium px-2.5 py-1 bg-error/10 text-error rounded-full">PERMANENT</span>
                 </div>
             `).join('');
             
             listContainer.innerHTML = rows;
             
             tableContainer.innerHTML = ips.map(ip => `
-                <tr class="group hover:bg-surface-variant/40 transition-colors">
-                    <td class="py-3 font-mono text-on-surface">${ip}</td>
-                    <td class="py-3 text-outline">Manually blocked</td>
-                    <td class="py-3"><span class="px-2 py-0.5 bg-error/10 text-error text-[9px] font-bold rounded border border-error/20">PERMANENT</span></td>
-                    <td class="py-3 text-right">
-                        <button onclick="unblockIP('${ip}')" class="text-primary hover:underline text-[10px] font-bold uppercase tracking-tighter">Unblock</button>
+                <tr class="group hover:bg-white/5 transition-colors">
+                    <td class="px-4 py-3 font-mono text-sm">${ip}</td>
+                    <td class="px-4 py-3 text-sm text-text-secondary">Manually blocked</td>
+                    <td class="px-4 py-3"><span class="px-2.5 py-1 bg-error/10 text-error text-xs font-medium rounded-full">PERMANENT</span></td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="unblockIP('${ip}')" class="text-xs font-medium text-primary hover:text-white transition-colors">Unblock</button>
                     </td>
                 </tr>
             `).join('');
@@ -1244,7 +2292,7 @@
         function updateInferenceStream(alerts) {
             const tbody = document.getElementById('inference-stream');
             if (!alerts || alerts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-outline text-sm">Waiting for inference data...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-text-muted text-sm">Waiting for inference data...</td></tr>';
                 return;
             }
 
@@ -1252,8 +2300,8 @@
                 const verdict = alert.final_verdict || 'Unknown';
                 const bgClass = getVerdictBgColor(verdict);
                 return `
-                    <tr class="hover:bg-surface-variant/40 transition-colors ${verdict === 'Attack' ? 'bg-error-container/10' : ''}">
-                        <td class="px-6 py-4 text-on-surface-variant">${formatTimestamp(alert.timestamp)}</td>
+                    <tr class="hover:bg-white/5 transition-colors ${verdict === 'Attack' ? 'bg-error/5' : ''}">
+                        <td class="px-6 py-4 text-text-secondary">${formatTimestamp(alert.timestamp)}</td>
                         <td class="px-6 py-4 ${verdict === 'Attack' ? 'text-error' : 'text-primary'}">${alert.src_ip}</td>
                         <td class="px-6 py-4">${alert.dst_port}</td>
                         <td class="px-6 py-4">${alert.protocol === 6 ? 'TCP' : alert.protocol === 17 ? 'UDP' : 'OTHER'}</td>
@@ -1303,26 +2351,26 @@
                 if (lookupHistory.length > 10) lookupHistory.pop();
                 updateLookupHistory();
                 
-                showToast(`Lookup complete for ${ip}`, 'check_circle');
+                showToast(`Lookup complete for ${ip}`, 'check-circle');
             } else {
-                showToast('TI lookup failed - API may be offline', 'error', 'cancel');
+                showToast('TI lookup failed - API may be offline', 'warning', 'cancel');
             }
         }
 
         function updateLookupHistory() {
             const container = document.getElementById('lookup-history');
             if (lookupHistory.length === 0) {
-                container.innerHTML = '<div class="text-[10px] text-outline">No recent lookups</div>';
+                container.innerHTML = '<div class="text-sm text-text-muted">No recent lookups</div>';
                 return;
             }
 
             container.innerHTML = lookupHistory.map(h => `
-                <div class="p-3 bg-surface-container rounded-lg border-l-2 ${h.malicious ? 'border-error' : 'border-primary-container'} hover:bg-surface-variant transition-colors cursor-pointer group" onclick="document.getElementById('ip-lookup-input').value='${h.ip}';lookupIP();">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="font-mono text-xs font-bold group-hover:text-primary transition-colors">${h.ip}</span>
-                        <span class="text-[8px] ${h.malicious ? 'bg-error-container text-error' : 'bg-secondary-container text-secondary'} px-1.5 py-0.5 rounded uppercase font-bold">${h.score}</span>
+                <div class="p-4 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer group" onclick="document.getElementById('ip-lookup-input').value='${h.ip}';lookupIP();">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-mono text-sm font-semibold group-hover:text-primary transition-colors">${h.ip}</span>
+                        <span class="text-xs font-medium ${h.malicious ? 'bg-error/10 text-error' : 'bg-secondary/10 text-secondary'} px-2.5 py-1 rounded-full">${h.score}</span>
                     </div>
-                    <p class="text-[9px] text-outline uppercase tracking-tighter">Scanned: ${h.time}</p>
+                    <p class="text-xs text-text-muted">Scanned: ${h.time}</p>
                 </div>
             `).join('');
         }
@@ -1407,16 +2455,16 @@
                     <div class="flex items-center justify-between py-1">
                         <div class="flex items-center gap-2">
                             <span class="text-base">${getCountryFlag(c.country_code)}</span>
-                            <span class="text-[10px] text-outline">${c.country}</span>
+                            <span class="text-xs text-text-secondary">${c.country}</span>
                         </div>
                         <div class="text-right">
                             <span class="text-xs font-mono font-bold">${c.attack_count}</span>
-                            <span class="text-[9px] text-outline ml-1">(${c.unique_ips} IPs)</span>
+                            <span class="text-xs text-text-muted ml-1">(${c.unique_ips} IPs)</span>
                         </div>
                     </div>
                 `).join('');
             } else {
-                countryList.innerHTML = '<div class="text-[10px] text-outline">No location data</div>';
+                countryList.innerHTML = '<div class="text-xs text-text-muted">No location data</div>';
                 document.getElementById('top-country-flag').textContent = '🌍';
                 document.getElementById('top-country-name').textContent = '-';
                 document.getElementById('top-country-attacks').textContent = '0 attacks';
@@ -1486,7 +2534,7 @@
             
             if (result && result.alerts_generated !== undefined) {
                 message.textContent = `Generated ${result.alerts_generated} alerts`;
-                showToast(`${type.toUpperCase()} simulation complete: ${result.alerts_generated} alerts`, 'check_circle');
+                showToast(`${type.toUpperCase()} simulation complete: ${result.alerts_generated} alerts`, 'check-circle');
                 fetchDashboardData();
             } else {
                 message.textContent = 'Simulation failed';
@@ -1518,7 +2566,7 @@
         async function unblockIP(ip) {
             const result = await postAPI('/unblock-ip', { ip });
             if (result) {
-                showToast(`IP ${ip} unblocked`, 'check_circle');
+                showToast(`IP ${ip} unblocked`, 'check-circle');
                 fetchDashboardData();
             } else {
                 showToast('Failed to unblock IP', 'error');
@@ -1579,7 +2627,7 @@
 
         function deployEnsemble() {
             showToast('Deploying ensemble...', 'upload');
-            setTimeout(() => showToast('Ensemble deployed successfully!', 'check_circle'), 2000);
+            setTimeout(() => showToast('Ensemble deployed successfully!', 'check-circle'), 2000);
         }
 
         // ==================== SYSTEM UPDATES ====================
@@ -1599,19 +2647,26 @@
         function init() {
             // Set up navigation
             document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', () => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
                     navigateTo(link.dataset.page);
                 });
             });
 
+            // Initialize scroll animations
+            initScrollAnimations();
+            
             // Set up keyboard shortcuts
             document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && document.activeElement.id === 'ip-lookup-input') {
+                    document.activeElement.blur();
+                }
                 if (e.key === 'Enter' && document.activeElement.id === 'ip-lookup-input') {
                     lookupIP();
                 }
                 if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
                     e.preventDefault();
-                    document.getElementById('global-search').focus();
+                    document.getElementById('ip-lookup-input')?.focus();
                 }
             });
 
@@ -1628,6 +2683,29 @@
 
             // Update time every second
             setInterval(updateSystemTime, 1000);
+            
+            // Add animation classes to first page
+            setTimeout(() => {
+                document.querySelectorAll('#page-dashboard .reveal').forEach(el => el.classList.add('visible'));
+            }, 100);
+            
+            // Slider event listeners
+            const aeSlider = document.getElementById('ae-threshold-slider');
+            const ifSlider = document.getElementById('if-contamination-slider');
+            const aeValue = document.getElementById('ae-threshold-value');
+            const ifValue = document.getElementById('if-contamination-value');
+            
+            if (aeSlider && aeValue) {
+                aeSlider.addEventListener('input', (e) => {
+                    aeValue.textContent = parseFloat(e.target.value).toFixed(2);
+                });
+            }
+            
+            if (ifSlider && ifValue) {
+                ifSlider.addEventListener('input', (e) => {
+                    ifValue.textContent = parseFloat(e.target.value).toFixed(2);
+                });
+            }
         }
 
         // Start when DOM is ready
