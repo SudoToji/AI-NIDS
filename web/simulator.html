@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AI-NIDS | Attack Simulator</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23050508'/%3E%3Cpath d='M16 6 L22 12 L22 20 L16 26 L10 20 L10 12 Z' fill='none' stroke='%2300d4ff' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%2300d4ff'/%3E%3C/svg%3E"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "void": "#050508", "abyss": "#08080c", "surface": "#0c0c10",
+                        "surface-elevated": "#12121a", "surface-card": "#16161f",
+                        "primary": "#00d4ff", "primary-muted": "#00a8cc", "secondary": "#00ff88",
+                        "accent-warm": "#ff6b35", "accent-amber": "#ffc107", "error": "#ff4757",
+                        "text-primary": "#ffffff", "text-secondary": "#8a8a9a", "text-muted": "#5a5a6a",
+                        "border-subtle": "rgba(255, 255, 255, 0.06)", "border-accent": "rgba(0, 212, 255, 0.2)"
+                    },
+                    fontFamily: { "sans": ["Geist", "system-ui", "sans-serif"], "mono": ["Geist Mono", "JetBrains Mono", "monospace"] },
+                    animation: { 'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.32, 0.72, 0, 1) forwards', 'glow-pulse': 'glowPulse 2s ease-in-out infinite', 'float': 'float 6s ease-in-out infinite' }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root { --color-void: #050508; --color-primary: #00d4ff; --color-secondary: #00ff88; --color-accent: #ff6b35; --spring-ease: cubic-bezier(0.32, 0.72, 0, 1); --bounce-ease: cubic-bezier(0.34, 1.56, 0.64, 1); }
+        * { pointer-events: auto; }
+        body { font-family: 'Geist', system-ui, sans-serif; background: var(--color-void); color: #ffffff; }
+        .orb-container { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.4; animation: float 20s ease-in-out infinite; }
+        .orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(0, 212, 255, 0.3), transparent 70%); top: -200px; right: -100px; }
+        .orb-2 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(0, 255, 136, 0.2), transparent 70%); bottom: -150px; left: -100px; animation-delay: -7s; }
+        .orb-3 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(255, 107, 53, 0.15), transparent 70%); top: 50%; left: 30%; animation-delay: -14s; }
+        @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 25% { transform: translate(30px, -30px) scale(1.05); } 50% { transform: translate(-20px, 20px) scale(0.95); } 75% { transform: translate(20px, 10px) scale(1.02); } }
+        body::after { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E"); opacity: 0.025; pointer-events: none; z-index: 9998; }
+        .card-premium { background: rgba(18, 18, 26, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 1.5rem; position: relative; overflow: hidden; transition: all 0.5s var(--spring-ease); }
+        .card-premium::before { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), transparent 30%, transparent 70%, rgba(0, 255, 136, 0.2)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity 0.5s var(--spring-ease); pointer-events: none; }
+        .card-premium:hover::before { opacity: 1; }
+        .card-premium:hover { transform: translateY(-4px) scale(1.01); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 80px -20px rgba(0, 212, 255, 0.15); }
+        .text-headline { font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+        .text-title { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
+        .text-body { font-size: 1rem; font-weight: 400; line-height: 1.7; color: #8a8a9a; }
+        .text-label { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #5a5a6a; }
+        .text-eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.625rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--color-primary); background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.2); padding: 0.375rem 0.875rem; border-radius: 9999px; }
+        .tabular { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' on; }
+        .nav-floating { position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(12, 12, 16, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9999px; padding: 0.5rem; display: flex; align-items: center; gap: 0.25rem; }
+        .nav-link { position: relative; padding: 0.625rem 1.25rem; font-size: 0.8125rem; font-weight: 500; color: #8a8a9a; border-radius: 9999px; transition: all 0.4s var(--spring-ease); display: flex; align-items: center; gap: 0.5rem; }
+        .nav-link:hover { color: #ffffff; background: rgba(255, 255, 255, 0.05); }
+        .nav-link.active { color: #ffffff; background: rgba(0, 212, 255, 0.1); }
+        .nav-link.active::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(135deg, var(--color-primary), transparent); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+        .status-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; position: relative; }
+        .status-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1px solid currentColor; opacity: 0.3; animation: pulse-ring 2s ease-out infinite; }
+        .status-live { background: var(--color-secondary); color: var(--color-secondary); box-shadow: 0 0 12px var(--color-secondary); }
+        .btn-attack { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: rgba(255, 71, 87, 0.1); color: #ff4757; font-size: 0.875rem; font-weight: 600; border: 1px solid rgba(255, 71, 87, 0.2); border-radius: 1rem; transition: all 0.4s var(--bounce-ease); }
+        .btn-attack:hover { background: rgba(255, 71, 87, 0.2); border-color: rgba(255, 71, 87, 0.4); transform: translateY(-2px); box-shadow: 0 10px 40px -10px rgba(255, 71, 87, 0.3); }
+        .btn-attack:active { transform: scale(0.98); }
+        .btn-attack-ghost { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: rgba(255, 255, 255, 0.05); color: #ffffff; font-size: 0.875rem; font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1rem; transition: all 0.4s var(--spring-ease); }
+        .btn-attack-ghost:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); transform: translateY(-2px); }
+        .btn-normal { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: rgba(0, 255, 136, 0.1); color: #00ff88; font-size: 0.875rem; font-weight: 600; border: 1px solid rgba(0, 255, 136, 0.2); border-radius: 1rem; transition: all 0.4s var(--bounce-ease); }
+        .btn-normal:hover { background: rgba(0, 255, 136, 0.2); border-color: rgba(0, 255, 136, 0.4); transform: translateY(-2px); }
+        .btn-all { display: inline-flex; align-items: center; gap: 0.75rem; padding: 1rem 1.5rem; background: linear-gradient(135deg, var(--color-primary), #00a8cc); color: #050508; font-size: 0.875rem; font-weight: 600; border-radius: 1rem; transition: all 0.4s var(--bounce-ease); }
+        .btn-all:hover { transform: translateY(-2px); box-shadow: 0 10px 40px -10px rgba(0, 212, 255, 0.5); }
+        .bento-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(12, 1fr); }
+        .bento-span-6 { grid-column: span 6; } .bento-span-12 { grid-column: span 12; }
+        @media (max-width: 768px) { .bento-span-6 { grid-column: span 12; } }
+        .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s var(--spring-ease); }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+        .reveal-delay-100 { transition-delay: 100ms; } .reveal-delay-200 { transition-delay: 200ms; } .reveal-delay-300 { transition-delay: 300ms; }
+        @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.3; } 100% { transform: scale(2); opacity: 0; } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+        ::selection { background: rgba(0, 212, 255, 0.3); color: #ffffff; }
+    </style>
+</head>
+<body class="bg-void text-white font-sans overflow-x-hidden">
+    <div class="orb-container">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    
+    <nav class="nav-floating" role="navigation" aria-label="Main navigation">
+        <div class="flex items-center gap-3 px-4 pr-6 border-r border-white/10 mr-2">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-[#00d4ff] to-[#00ff88] flex items-center justify-center shadow-lg shadow-[#00d4ff]/20">
+                <i class="ph-light ph-shield-check text-lg text-void"></i>
+            </div>
+            <span class="font-bold text-sm tracking-tight">AI-NIDS</span>
+        </div>
+        <a class="nav-link" href="/">
+            <i class="ph-light ph-squares-four text-base"></i><span>Dashboard</span>
+        </a>
+        <a class="nav-link" href="/alerts">
+            <i class="ph-light ph-warning-circle text-base"></i><span>Alerts</span>
+        </a>
+        <a class="nav-link" href="/models">
+            <i class="ph-light ph-brain text-base"></i><span>Models</span>
+        </a>
+        <a class="nav-link" href="/investigation">
+            <i class="ph-light ph-magnifying-glass text-base"></i><span>Investigation</span>
+        </a>
+        <a class="nav-link active" href="/simulator">
+            <i class="ph-light ph-flask text-base"></i><span>Simulator</span>
+        </a>
+        <div class="ml-4 pl-4 border-l border-white/10 flex items-center gap-2">
+            <span class="status-dot status-live"></span>
+            <span class="text-xs text-text-secondary tabular">LIVE</span>
+        </div>
+    </nav>
+    
+    <main class="relative z-10 pt-24 pb-32 px-6 lg:px-12 min-h-[100dvh]">
+        <section class="mb-16 pt-8">
+            <div class="reveal">
+                <span class="text-eyebrow mb-6"><i class="ph-light ph-flask text-xs"></i>UNSW-NB15 Test Suite</span>
+                <h1 class="text-headline mt-4 mb-4">Attack<br/><span class="text-text-secondary">Simulator</span></h1>
+                <p class="text-body max-w-lg">Generate synthetic network traffic and attack patterns to test the NIDS detection capabilities. Uses the UNSW-NB15 dataset patterns.</p>
+            </div>
+        </section>
+        
+        <section class="mb-16 reveal">
+            <div class="card-premium p-8 relative overflow-hidden group">
+                <div class="absolute -right-20 -top-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700"></div>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-12 h-12 rounded-xl bg-surface flex items-center justify-center border border-white/5 shadow-inner">
+                        <i class="ph-light ph-flask text-xl text-text-primary"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-title">Attack Simulator</h3>
+                        <p class="text-sm text-text-secondary mt-1">Generate UNSW-NB15 test alerts for system validation</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 relative z-10 mb-6">
+                    <button onclick="simulateAttack('fuzzers')" class="btn-attack">
+                        <i class="ph-light ph-bug"></i>Fuzzers
+                    </button>
+                    <button onclick="simulateAttack('analysis')" class="btn-attack-ghost">
+                        <i class="ph-light ph-chart-bar"></i>Analysis
+                    </button>
+                    <button onclick="simulateAttack('backdoors')" class="btn-attack-ghost">
+                        <i class="ph-light ph-door"></i>Backdoors
+                    </button>
+                    <button onclick="simulateAttack('dos')" class="btn-attack">
+                        <i class="ph-light ph-lightning"></i>DoS
+                    </button>
+                    <button onclick="simulateAttack('exploits')" class="btn-attack">
+                        <i class="ph-light ph-code"></i>Exploits
+                    </button>
+                    <button onclick="simulateAttack('generic')" class="btn-attack-ghost">
+                        <i class="ph-light ph-globe"></i>Generic
+                    </button>
+                    <button onclick="simulateAttack('reconnaissance')" class="btn-attack-ghost">
+                        <i class="ph-light ph-eye"></i>Reconnaissance
+                    </button>
+                    <button onclick="simulateAttack('shellcode')" class="btn-attack-ghost">
+                        <i class="ph-light ph-terminal"></i>Shellcode
+                    </button>
+                    <button onclick="simulateAttack('worms')" class="btn-attack-ghost">
+                        <i class="ph-light ph-bug-beetle"></i>Worms
+                    </button>
+                    <button onclick="simulateAttack('normal')" class="btn-normal">
+                        <i class="ph-light ph-check-circle"></i>Normal
+                    </button>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-white/5">
+                    <button onclick="simulateAttack('all')" class="btn-all w-full justify-center">
+                        <i class="ph-light ph-play-circle"></i>Simulate All Attack Types
+                    </button>
+                </div>
+                
+                <div class="mt-6 flex items-center gap-3" id="simulate-status" style="display: none;">
+                    <span class="status-dot status-live"></span>
+                    <span class="text-sm text-text-secondary" id="simulate-message">Simulating...</span>
+                </div>
+            </div>
+        </section>
+        
+        <section class="mb-16 reveal">
+            <div class="bento-grid gap-6">
+                <div class="bento-span-6">
+                    <div class="card-premium p-6">
+                        <h3 class="text-title mb-6">Simulation Results</h3>
+                        <div class="space-y-4" id="simulation-results">
+                            <div class="text-center text-text-muted py-8">No simulations run yet. Click an attack type above to test.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bento-span-6 reveal reveal-delay-100">
+                    <div class="card-premium p-6">
+                        <h3 class="text-title mb-6">Attack Category Reference</h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Fuzzers</span>
+                                <span class="text-xs text-error">Malicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Analysis</span>
+                                <span class="text-xs text-error">Malicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Backdoors</span>
+                                <span class="text-xs text-error">Malicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">DoS</span>
+                                <span class="text-xs text-error">Malicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Exploits</span>
+                                <span class="text-xs text-error">Malicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Generic</span>
+                                <span class="text-xs text-error">Malicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Reconnaissance</span>
+                                <span class="text-xs text-accent-amber">Suspicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Shellcode</span>
+                                <span class="text-xs text-error">Malicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Worms</span>
+                                <span class="text-xs text-error">Malicious</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                <span class="text-text-secondary">Normal</span>
+                                <span class="text-xs text-secondary">Benign</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="reveal">
+            <div class="card-premium p-6">
+                <h3 class="text-title mb-4 flex items-center gap-3"><i class="ph-light ph-info text-xl text-primary"></i>About UNSW-NB15</h3>
+                <div class="text-body space-y-3">
+                    <p>The UNSW-NB15 dataset is a comprehensive network intrusion detection dataset created by the Australian Cyber Security Centre (ACSC). It contains modern normal and contemporary attack behaviors.</p>
+                    <p>This simulator generates synthetic network flows based on the UNSW-NB15 patterns, allowing you to test the AI-NIDS detection capabilities against various attack categories including:</p>
+                    <ul class="list-disc list-inside space-y-1 ml-4 text-text-secondary">
+                        <li><strong class="text-text-primary">Fuzzers</strong> - Automated random input to discover vulnerabilities</li>
+                        <li><strong class="text-text-primary">Analysis</strong> - Port scans, web attacks, spam</li>
+                        <li><strong class="text-text-primary">Backdoors</strong> - Stealth pathways to bypass authentication</li>
+                        <li><strong class="text-text-primary">DoS</strong> - Denial of Service attacks</li>
+                        <li><strong class="text-text-primary">Exploits</strong> - Known vulnerabilities exploitation</li>
+                        <li><strong class="text-text-primary">Generic</strong> - Signature-based attacks</li>
+                        <li><strong class="text-text-primary">Reconnaissance</strong> - Information gathering</li>
+                        <li><strong class="text-text-primary">Shellcode</strong> - Malicious code execution</li>
+                        <li><strong class="text-text-primary">Worms</strong> - Self-replicating malware</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="fixed bottom-0 left-0 w-full z-40 flex justify-between items-center px-6 py-3 bg-void/80 backdrop-blur-xl border-t border-white/5">
+        <div class="flex items-center gap-6">
+            <span class="font-mono text-xs text-text-muted tabular">System Time: <span id="system-time">--:--:--</span></span>
+            <span class="flex items-center gap-2">
+                <span class="status-dot status-live"></span>
+                <span class="font-mono text-xs text-secondary">API: <span id="api-status">Connecting</span></span>
+            </span>
+        </div>
+        <div class="flex items-center gap-6">
+            <a href="/" class="font-mono text-xs text-text-muted hover:text-white transition-colors">Dashboard</a>
+            <a href="/alerts" class="font-mono text-xs text-text-muted hover:text-white transition-colors">Alerts</a>
+            <span class="font-mono text-xs text-text-muted">v2.4.0-stable</span>
+        </div>
+    </footer>
+    
+    <div id="toast" class="fixed bottom-12 right-4 z-[60] transform translate-x-full transition-transform duration-300">
+        <div class="card-premium p-4 flex items-center gap-3">
+            <i class="ph-light ph-check-circle text-xl text-primary" id="toast-icon"></i>
+            <span class="text-xs font-medium" id="toast-message">Success</span>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let simulationHistory = [];
+        
+        function showToast(message, icon = 'check-circle', duration = 3000) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            document.getElementById('toast-icon').className = `ph-light ph-${icon} text-xl`;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => toast.classList.add('translate-x-full'), duration);
+        }
+        
+        async function fetchAPI(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, { headers: { 'Content-Type': 'application/json' }, ...options });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`API Error (${endpoint}):`, error);
+                document.getElementById('api-status').textContent = 'Error';
+                document.getElementById('api-status').classList.add('text-error');
+                return null;
+            }
+        }
+        
+        async function postAPI(endpoint, data) {
+            return fetchAPI(endpoint, { method: 'POST', body: JSON.stringify(data) });
+        }
+        
+        async function simulateAttack(type) {
+            const status = document.getElementById('simulate-status');
+            const message = document.getElementById('simulate-message');
+            
+            status.style.display = 'flex';
+            message.textContent = `Simulating ${type} attack...`;
+            
+            const result = await postAPI('/simulate', { type, target_ip: '127.0.0.1' });
+            
+            const resultsContainer = document.getElementById('simulation-results');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            if (result && result.alerts_generated !== undefined) {
+                message.textContent = `Generated ${result.alerts_generated} alerts`;
+                
+                const isAll = type === 'all';
+                const attackTypes = isAll ? ['Fuzzers', 'Analysis', 'Backdoors', 'DoS', 'Exploits', 'Generic', 'Reconnaissance', 'Shellcode', 'Worms'] : [type];
+                
+                simulationHistory.unshift({ type, count: result.alerts_generated, time: timestamp, success: true });
+                if (simulationHistory.length > 10) simulationHistory.pop();
+                
+                resultsContainer.innerHTML = simulationHistory.map(h => `
+                    <div class="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 ${h.success ? '' : 'border-error/20'}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg ${h.success ? 'bg-secondary/10' : 'bg-error/10'} flex items-center justify-center">
+                                <i class="ph-light ${h.success ? 'ph-check-circle text-secondary' : 'ph-x-circle text-error'} text-lg"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold capitalize">${h.type}</p>
+                                <p class="text-xs text-text-muted">${h.time}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xl font-bold tabular ${h.success ? 'text-primary' : 'text-error'}">${h.count}</span>
+                            <p class="text-xs text-text-muted">alerts</p>
+                        </div>
+                    </div>
+                `).join('');
+                
+                showToast(`${type.toUpperCase()} simulation: ${result.alerts_generated} alerts`, 'check-circle');
+            } else {
+                message.textContent = 'Simulation failed';
+                showToast('Attack simulation failed', 'error');
+                
+                simulationHistory.unshift({ type, count: 0, time: timestamp, success: false });
+                if (simulationHistory.length > 10) simulationHistory.pop();
+                
+                resultsContainer.innerHTML = simulationHistory.map(h => `
+                    <div class="flex items-center justify-between p-4 bg-white/5 rounded-xl border ${h.success ? 'border-white/5' : 'border-error/20'}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg ${h.success ? 'bg-secondary/10' : 'bg-error/10'} flex items-center justify-center">
+                                <i class="ph-light ${h.success ? 'ph-check-circle text-secondary' : 'ph-x-circle text-error'} text-lg"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold capitalize">${h.type}</p>
+                                <p class="text-xs text-text-muted">${h.time}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xl font-bold tabular ${h.success ? 'text-primary' : 'text-error'}">${h.count}</span>
+                            <p class="text-xs text-text-muted">alerts</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            setTimeout(() => { status.style.display = 'none'; }, 3000);
+        }
+        
+        function updateSystemTime() {
+            document.getElementById('system-time').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+        }
+        
+        function initReveal() {
+            const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); }); }, { threshold: 0.1 });
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+            document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
+        }
+        
+        function init() {
+            initReveal();
+            updateSystemTime();
+            setInterval(updateSystemTime, 1000);
+            document.getElementById('api-status').textContent = 'Connected';
+        }
+        
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

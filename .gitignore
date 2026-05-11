@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+logs/*.db
+logs/*.log
+logs.txt
+ti_cache.db
+
+# Env
+.env
+.env.local
+
+# Planning & Graph (keep in local, not for repo)
+.planning/
+graphify-out/
+
+# Data (keep folder structure, exclude large CSVs)
+data/unsw_nb15/
+data/cicids2017_cleaned.csv
+
+# Models (large files - can be regenerated)
+models/*.pkl
+models/*.keras
+models/*.npy
+models/*.png
+
+# Data (if large)
+data/raw/
+data/processed/
+
+# OS
+.DS_Store
+Thumbs.db
