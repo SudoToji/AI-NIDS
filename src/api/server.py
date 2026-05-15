@@ -637,19 +637,18 @@ def _get_scaled_features(features: np.ndarray) -> np.ndarray:
         
         # Check if we have UNSW-NB15 features (42) or CIC-IDS2017 features (52)
         if n_features == 42:
-            # UNSW-NB15 - try without column names first, some scalers prefer that
+            # UNSW-NB15 - scaler was trained with specific column names
             _using_unsw = True
             try:
-                # First try just raw numpy array
-                return scaler.transform(features)
+                # Try with UNSW column names (matches training format)
+                features_df = pd.DataFrame(features, columns=UNSW_FEATURE_COLUMNS)
+                return scaler.transform(features_df)
             except Exception:
-                # If it needs names, try with standard generated names since we lost the original ones
-                feature_names = [f'f{i}' for i in range(42)]
-                features_df = pd.DataFrame(features, columns=feature_names)
                 try:
-                    return scaler.transform(features_df)
+                    # Fallback: try raw numpy array
+                    return scaler.transform(features)
                 except Exception:
-                    # Last resort
+                    logger.warning("Scaler transform failed for UNSW features, returning raw")
                     return features
         elif n_features == 52:
             # CIC-IDS2017

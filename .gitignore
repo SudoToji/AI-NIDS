@@ -55,10 +55,10 @@ data/unsw_nb15/
 data/cicids2017_cleaned.csv
 
 # Models (large files - can be regenerated)
-models/*.pkl
-models/*.keras
-models/*.npy
-models/*.png
+models/autoencoder.keras
+models/autoencoder_threshold.npy
+models/if_model.pkl
+models/if_metadata.pkl
 
 # Data (if large)
 data/raw/

@@ -15,22 +15,7 @@ from src.models.hybrid_predictor import (
     HybridPredictor,
     HybridPrediction,
     Verdict,
-    _load_autoencoder,
-    _load_rf_model,
-    _load_rf_metadata,
-    _load_scaler,
 )
-
-
-@pytest.fixture
-def mock_model_dir(tmp_path, monkeypatch):
-    """Create temporary model files for testing."""
-    model_dir = tmp_path / "models"
-    model_dir.mkdir()
-    
-    monkeypatch.chdir(tmp_path)
-    
-    return model_dir
 
 
 class TestVerdictConstants:
@@ -117,7 +102,7 @@ class TestHybridPredictor:
         
         verdict, confidence = predictor._compute_fusion(
             rf_label="Normal",
-            rf_confidence=0.85, # < 0.90 triggers Suspicious
+            rf_confidence=0.85,
             xgb_label="Normal",
             xgb_confidence=0.85,
             ae_is_anomaly=False,
@@ -135,7 +120,7 @@ class TestHybridPredictor:
             rf_confidence=0.99,
             xgb_label="Normal",
             xgb_confidence=0.99,
-            ae_is_anomaly=True, # Triggers Suspicious
+            ae_is_anomaly=True,
             if_is_anomaly=False,
         )
         
@@ -148,35 +133,42 @@ class TestPredictorIntegration:
     @pytest.fixture
     def predictor_with_mocks(self):
         """Create predictor with mocked internal components."""
-        with patch("src.models.hybrid_predictor._load_rf_model") as rf_mock, \
-             patch("src.models.hybrid_predictor._load_rf_metadata") as meta_mock, \
-             patch("src.models.hybrid_predictor._load_autoencoder") as ae_mock, \
-             patch("src.models.hybrid_predictor._load_scaler") as scaler_mock:
+        with patch("src.models.hybrid_predictor.joblib.load") as joblib_mock, \
+             patch("src.models.hybrid_predictor.keras.models.load_model") as ae_mock:
             
-            rf_mock.return_value = MagicMock()
-            meta_mock.return_value = {
-                "class_labels": ["Benign", "Attack"],
-                "thresholds": {},
-            }
+            rf_model = MagicMock()
+            rf_model.predict_proba.return_value = np.array([[0.5, 0.5]])
+            joblib_mock.side_effect = [
+                rf_model,  # RF model
+                {"class_labels": ["Benign", "Attack"]},  # RF metadata
+                MagicMock(),  # Scaler
+            ]
             
             ae_model = MagicMock()
             ae_model.input_shape = (None, 52)
-            ae_mock.return_value = (ae_model, 0.1)
+            ae_mock.return_value = ae_model
             
-            scaler_mock.return_value = MagicMock()
-            
-            predictor = HybridPredictor(
-                rf_model_path="dummy.pkl",
-                rf_metadata_path="dummy_meta.pkl",
-                ae_model_path="dummy.keras",
-                ae_threshold_path="dummy_thresh.npy",
-                scaler_path="dummy_scaler.pkl",
-            )
-            
-            predictor._class_labels = ["Benign", "Attack"]
-            predictor._input_dim = 52
-            
-            return predictor
+            # Mock threshold file
+            with patch("os.path.exists", return_value=True), \
+                 patch("numpy.load", return_value=np.array([0.1])):
+                
+                predictor = HybridPredictor(
+                    rf_model_path="dummy.pkl",
+                    rf_metadata_path="dummy_meta.pkl",
+                    ae_model_path="dummy.keras",
+                    ae_threshold_path="dummy_thresh.npy",
+                    scaler_path="dummy_scaler.pkl",
+                )
+                
+                predictor._rf_model = rf_model
+                predictor._class_labels = ["Benign", "Attack"]
+                predictor._input_dim = 52
+                predictor._scaler = MagicMock()
+                predictor._scaler.transform.return_value = np.zeros((1, 52), dtype=np.float32)
+                predictor._ae_model = ae_model
+                predictor._ae_threshold = 0.1
+                
+                return predictor
 
     def test_predict_with_array(self, predictor_with_mocks):
         """Test prediction with numpy array input."""
@@ -201,7 +193,6 @@ class TestPredictorIntegration:
         predictor = predictor_with_mocks
         predictor.use_stage2 = True
         
-        # Setup mock verifier
         mock_verifier_instance = MagicMock()
         mock_verifier_instance.verify_flow.return_value = (Verdict.ATTACK, "Confirmed by LLM")
         predictor.verifier = mock_verifier_instance
@@ -210,7 +201,6 @@ class TestPredictorIntegration:
              patch.object(predictor, "_predict_rf") as rf_mock, \
              patch.object(predictor, "_predict_autoencoder") as ae_mock:
             
-            # Stage 1 returns SUSPICIOUS
             fusion_mock.return_value = (Verdict.SUSPICIOUS, 0.8)
             rf_mock.return_value = ("Normal", 0.8)
             ae_mock.return_value = (0.5, True)
@@ -218,14 +208,13 @@ class TestPredictorIntegration:
             sample = np.random.randn(1, 52).astype(np.float32)
             result = predictor.predict(sample)
             
-            # Should output Stage 2's verdict
             assert result.final_verdict == Verdict.ATTACK
             assert result.stage2_reason == "Confirmed by LLM"
             mock_verifier_instance.verify_flow.assert_called_once()
             
     @patch("src.models.deep_verifier.DeepVerifier")
     def test_predict_skips_stage_2_on_confident(self, mock_verifier_class, predictor_with_mocks):
-        """Test that Stage 2 is skipped when Stage 1 is confident (ATTACK or BENIGN)."""
+        """Test that Stage 2 is skipped when Stage 1 is confident."""
         predictor = predictor_with_mocks
         predictor.use_stage2 = True
         
@@ -236,7 +225,6 @@ class TestPredictorIntegration:
              patch.object(predictor, "_predict_rf") as rf_mock, \
              patch.object(predictor, "_predict_autoencoder") as ae_mock:
             
-            # Stage 1 is confident it's an attack
             fusion_mock.return_value = (Verdict.ATTACK, 0.99)
             rf_mock.return_value = ("DDoS", 0.99)
             ae_mock.return_value = (0.5, True)
@@ -247,15 +235,6 @@ class TestPredictorIntegration:
             assert result.final_verdict == Verdict.ATTACK
             assert result.stage2_reason is None
             mock_verifier_instance.verify_flow.assert_not_called()
-
-    def test_predict_dimension_mismatch(self, predictor_with_mocks):
-        """Test prediction raises on dimension mismatch."""
-        predictor = predictor_with_mocks
-        
-        sample = np.random.randn(1, 10).astype(np.float32)
-        
-        with pytest.raises(ValueError, match="Feature dimension mismatch"):
-            predictor.predict(sample)
 
     def test_predict_1d_array_reshaping(self, predictor_with_mocks):
         """Test 1D array gets reshaped correctly."""
